@@ -15,7 +15,7 @@ def health_check(request):
 
 
 urlpatterns = [
-    path('admin-panel/', admin.site.urls),
+    path('admin/', admin.site.urls),
 
     # Health
     path('health/', health_check, name='health-check'),
@@ -26,7 +26,7 @@ urlpatterns = [
     path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 
     # path('api/v1/', include('apps.your_app.urls')),
-    path('testing/', include('apps.testing.urls', namespace='testing')),
+    path('', include('apps.testing.urls', namespace='testing'))
 ]
 
 if settings.DEBUG:
