@@ -18,8 +18,10 @@ from .serializers import (
     AnswerSubmitSerializer, AnswerResultSerializer,
     AttemptFinishSerializer, FinishResultSerializer,
     StudentAttemptSerializer,
+    SyncAnswerSerializer,
 )
-from .services.session_service import (
+from .services import (
+    SessionService, AttemptService, AnswerService, SyncService,
     create_session, get_valid_session,
     start_attempt, submit_answer, finish_attempt, get_attempt_result,
 )
@@ -32,15 +34,9 @@ def _err(exc: ValidationError):
     return Response({'detail': msg}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Tests
-# ──────────────────────────────────────────────────────────────────────────────
+# ─── Tests ────────────────────────────────────────────────────────────────────
 
 class TestListCreateView(generics.ListCreateAPIView):
-    """
-    GET  /api/v1/tests/   — public list
-    POST /api/v1/tests/   — admin create
-    """
     filter_backends  = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['level', 'is_active']
     search_fields    = ['title', 'description']
@@ -60,11 +56,6 @@ class TestListCreateView(generics.ListCreateAPIView):
 
 
 class TestDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    GET    /api/v1/tests/{id}/   — public
-    PUT    /api/v1/tests/{id}/   — admin
-    DELETE /api/v1/tests/{id}/   — admin
-    """
     queryset = Test.objects.all()
 
     def get_serializer_class(self):
@@ -74,19 +65,16 @@ class TestDetailView(generics.RetrieveUpdateDestroyAPIView):
         return [AllowAny()] if self.request.method == 'GET' else [IsAdminUser()]
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Sessions
-# ──────────────────────────────────────────────────────────────────────────────
+# ─── Sessions ─────────────────────────────────────────────────────────────────
 
 class SessionCreateView(APIView):
-    """POST /api/v1/sessions/create — admin generates a session key."""
     permission_classes = [IsAdminUser]
 
     def post(self, request):
         ser = SessionCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         try:
-            result = create_session(str(ser.validated_data['test_id']))
+            result = SessionService.create_session(str(ser.validated_data['test_id']))
         except ValidationError as exc:
             return _err(exc)
         return Response(
@@ -95,8 +83,8 @@ class SessionCreateView(APIView):
         )
 
 
-class SessionEnterView(APIView):
-    """POST /api/v1/sessions/enter — student validates key."""
+class SessionValidateView(APIView):
+    """POST /api/v1/sessions/validate — student validates key (alias of enter)."""
     permission_classes = [AllowAny]
     throttle_classes   = [AnonRateThrottle]
 
@@ -105,29 +93,42 @@ class SessionEnterView(APIView):
         if not key:
             return Response({'detail': 'key is required.'}, status=400)
         try:
-            session = get_valid_session(key)
+            session = SessionService.validate_session(key)
         except ValidationError as exc:
             return _err(exc)
         return Response(TestSessionSerializer(session).data)
 
 
+class SessionEnterView(SessionValidateView):
+    """POST /api/v1/sessions/enter — same as validate, kept for compat."""
+    pass
+
+
+class SessionExpireView(APIView):
+    """POST /api/v1/sessions/{id}/expire — admin force-expires a session."""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, session_id):
+        try:
+            SessionService.expire_session(str(session_id))
+        except ValidationError as exc:
+            return _err(exc)
+        return Response({'detail': 'Session expired.'})
+
+
 class SessionListView(generics.ListAPIView):
-    """GET /api/v1/sessions/ — admin only."""
     serializer_class   = TestSessionSerializer
     permission_classes = [IsAdminUser]
     filter_backends    = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields   = ['test', 'is_active']
+    filterset_fields   = ['test', 'is_active', 'status']
 
     def get_queryset(self):
         return TestSession.objects.select_related('test').prefetch_related('attempts')
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Attempts
-# ──────────────────────────────────────────────────────────────────────────────
+# ─── Attempts ─────────────────────────────────────────────────────────────────
 
 class AttemptStartView(APIView):
-    """POST /api/v1/attempt/start"""
     permission_classes = [AllowAny]
     throttle_classes   = [AnonRateThrottle]
 
@@ -135,7 +136,7 @@ class AttemptStartView(APIView):
         ser = AttemptStartSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         try:
-            result = start_attempt(
+            result = AttemptService.start_attempt(
                 key=ser.validated_data['key'],
                 student_name=ser.validated_data['student_name'],
             )
@@ -145,7 +146,6 @@ class AttemptStartView(APIView):
 
 
 class AttemptAnswerView(APIView):
-    """POST /api/v1/attempt/answer"""
     permission_classes = [AllowAny]
     throttle_classes   = [AnonRateThrottle]
 
@@ -153,7 +153,7 @@ class AttemptAnswerView(APIView):
         ser = AnswerSubmitSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         try:
-            result = submit_answer(
+            result = AnswerService.submit_answer(
                 attempt_id=str(ser.validated_data['attempt_id']),
                 question_id=str(ser.validated_data['question_id']),
                 answer_text=ser.validated_data.get('answer_text', ''),
@@ -165,7 +165,6 @@ class AttemptAnswerView(APIView):
 
 
 class AttemptFinishView(APIView):
-    """POST /api/v1/attempt/finish"""
     permission_classes = [AllowAny]
     throttle_classes   = [AnonRateThrottle]
 
@@ -173,32 +172,89 @@ class AttemptFinishView(APIView):
         ser = AttemptFinishSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         try:
-            result = finish_attempt(str(ser.validated_data['attempt_id']))
+            result = AttemptService.finish_attempt(str(ser.validated_data['attempt_id']))
         except ValidationError as exc:
             return _err(exc)
         return Response(FinishResultSerializer(result).data)
 
 
 class AttemptResultView(APIView):
-    """GET /api/v1/attempt/{attempt_id}/result"""
     permission_classes = [AllowAny]
 
     def get(self, request, attempt_id):
         try:
-            data = get_attempt_result(str(attempt_id))
+            data = AttemptService.get_attempt_result(str(attempt_id))
         except ValidationError as exc:
             return _err(exc)
         return Response(data)
 
 
 class AttemptListView(generics.ListAPIView):
-    """GET /api/v1/attempts/ — admin only."""
     serializer_class   = StudentAttemptSerializer
     permission_classes = [IsAdminUser]
     filter_backends    = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields   = ['session', 'session__test']
+    filterset_fields   = ['session', 'session__test', 'status']
     search_fields      = ['student_name']
     ordering_fields    = ['-started_at', 'score']
 
     def get_queryset(self):
         return StudentAttempt.objects.select_related('session__test').all()
+
+
+# ─── Sync API (FastAPI integration) ───────────────────────────────────────────
+
+class SyncSessionDataView(APIView):
+    """GET /api/v1/sync/session/{key} — FastAPI fetches full session payload."""
+    permission_classes = [AllowAny]
+
+    def get(self, request, key):
+        try:
+            data = SyncService.prepare_data_for_fastapi(key)
+        except ValidationError as exc:
+            return _err(exc)
+        return Response(data)
+
+
+class SyncPushAnswerView(APIView):
+    """POST /api/v1/sync/attempt/{attempt_id}/answer — FastAPI pushes answer."""
+    permission_classes = [AllowAny]
+
+    def post(self, request, attempt_id):
+        ser = SyncAnswerSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            result = SyncService.push_attempt_update(
+                attempt_id=str(attempt_id),
+                payload={
+                    'question_id':      str(ser.validated_data['question_id']),
+                    'answer_text':      ser.validated_data.get('answer_text', ''),
+                    'selected_options': [str(o) for o in ser.validated_data.get('selected_options', [])],
+                },
+            )
+        except ValidationError as exc:
+            return _err(exc)
+        return Response(result)
+
+
+class SyncAttemptStateView(APIView):
+    """GET /api/v1/sync/attempt/{attempt_id}/state — FastAPI reads current state."""
+    permission_classes = [AllowAny]
+
+    def get(self, request, attempt_id):
+        try:
+            data = SyncService.sync_attempt_results(str(attempt_id))
+        except ValidationError as exc:
+            return _err(exc)
+        return Response(data)
+
+
+class SyncFinalizeView(APIView):
+    """POST /api/v1/sync/attempt/{attempt_id}/finalize — FastAPI finalizes attempt."""
+    permission_classes = [AllowAny]
+
+    def post(self, request, attempt_id):
+        try:
+            data = SyncService.finalize_results(str(attempt_id))
+        except ValidationError as exc:
+            return _err(exc)
+        return Response(data)

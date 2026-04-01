@@ -8,7 +8,7 @@ environ.Env.read_env(os.path.join(Path(__file__).resolve().parent.parent.parent,
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 SECRET_KEY = env('SECRET_KEY', default='django-insecure-super-secret-key-change-in-production')
-DEBUG = False
+DEBUG = True
 ALLOWED_HOSTS = []
 GIGACHAT_CLIENT_ID = env('GIGACHAT_CLIENT_ID', default='')
 GIGACHAT_SECRET    = env('GIGACHAT_SECRET',    default='')
@@ -57,7 +57,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

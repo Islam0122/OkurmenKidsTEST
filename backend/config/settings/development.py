@@ -19,4 +19,4 @@ CSRF_COOKIE_SECURE = False
 REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] += [
     'rest_framework.renderers.BrowsableAPIRenderer',
 ]
-JAZZMIN_SETTINGS['show_ui_builder'] = True
+# JAZZMIN_SETTINGS['show_ui_builder'] = True
