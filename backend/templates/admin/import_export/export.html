@@ -1,0 +1,129 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Экспорт данных — {{ block.super }}{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div style="
+  display:flex;
+  align-items:center;
+  gap:14px;
+  background:linear-gradient(135deg,#064e3b 0%,#10b981 100%);
+  color:#fff;
+  border-radius:14px;
+  padding:24px 28px;
+  margin-bottom:24px;
+  box-shadow:0 6px 24px rgba(16,185,129,.22);
+">
+  <span style="font-size:36px;line-height:1;">⬇</span>
+  <div>
+    <h1 style="margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;">
+      Экспорт данных
+    </h1>
+    <p style="margin:4px 0 0;opacity:.8;font-size:13px;">
+      Выберите формат и нажмите «Экспортировать».
+    </p>
+  </div>
+</div>
+
+<div class="export-form-container">
+
+  <form method="post">
+    {% csrf_token %}
+
+    <!-- Format pills — prettier than the default <select> -->
+    <div style="margin-bottom:24px;">
+      <label style="
+        font-size:12px;font-weight:700;
+        text-transform:uppercase;letter-spacing:.07em;
+        color:#64748b;display:block;margin-bottom:10px;
+      ">Формат файла</label>
+
+      <div id="fmt-pills" style="display:flex;flex-wrap:wrap;gap:8px;">
+        {% for choice in form.file_format.field.choices %}
+        <label style="
+          display:inline-flex;align-items:center;gap:6px;
+          padding:7px 18px;border-radius:22px;
+          border:2px solid #e2e8f0;background:#f8fafc;
+          font-size:13px;font-weight:600;color:#475569;
+          cursor:pointer;transition:all .15s;
+        "
+        class="fmt-pill"
+        >
+          <input type="radio" name="file_format" value="{{ choice.0 }}"
+            {% if forloop.first %}checked{% endif %}
+            style="display:none;"
+            onchange="activatePill(this)"
+          >
+          {{ choice.1 }}
+        </label>
+        {% endfor %}
+      </div>
+
+      <!-- Keep the original hidden select in sync so DRF serializer works -->
+      <div style="display:none;">{{ form.file_format }}</div>
+    </div>
+
+    <!-- Submit -->
+    <button type="submit" style="
+      width:100%;
+      padding:14px;
+      background:linear-gradient(135deg,#10b981,#059669);
+      color:#fff;border:none;border-radius:10px;
+      font-size:15px;font-weight:700;cursor:pointer;
+      letter-spacing:.01em;
+      transition:filter .15s,transform .12s,box-shadow .15s;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+    "
+    onmouseover="this.style.filter='brightness(1.08)';this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(16,185,129,.35)'"
+    onmouseout="this.style.filter='';this.style.transform='';this.style.boxShadow=''"
+    >
+      ⬇ Скачать файл
+    </button>
+  </form>
+</div>
+
+<!-- Info card -->
+<div style="
+  max-width:680px;margin-top:20px;
+  background:#fff;border:1px solid #e2e8f0;
+  border-radius:14px;padding:24px 28px;
+">
+  <h3 style="margin:0 0 12px;font-size:14px;font-weight:700;color:#065f46;">
+    📋 Что будет экспортировано?
+  </h3>
+  <p style="margin:0;font-size:13px;color:#475569;line-height:1.7;">
+    Экспортируются <strong>все записи</strong> с их полями, включая вычисляемые
+    (кол-во вопросов, длительность попытки и т.д.).
+    Для экспорта <em>только выбранных строк</em> — используйте действие
+    <strong>«Экспортировать выделенное»</strong> в списке.
+  </p>
+</div>
+
+<style>
+.fmt-pill { user-select:none; }
+.fmt-pill:hover { border-color:#3b82f6 !important; background:#eff6ff !important; color:#2563eb !important; }
+.fmt-pill.active { border-color:#10b981 !important; background:#ecfdf5 !important; color:#065f46 !important; }
+</style>
+
+<script>
+// Sync radio → hidden select & pill styling
+(function () {
+  var pills = document.querySelectorAll('.fmt-pill');
+  var sel   = document.getElementById('id_file_format');
+
+  function activatePill(radio) {
+    pills.forEach(function (p) { p.classList.remove('active'); });
+    radio.closest('.fmt-pill').classList.add('active');
+    if (sel) sel.value = radio.value;
+  }
+  window.activatePill = activatePill;
+
+  // Activate first on load
+  var first = document.querySelector('.fmt-pill input[type=radio]:checked');
+  if (!first) first = document.querySelector('.fmt-pill input[type=radio]');
+  if (first) activatePill(first);
+})();
+</script>
+{% endblock %}

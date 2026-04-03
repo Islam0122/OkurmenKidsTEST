@@ -1,0 +1,173 @@
+{% extends "admin/import_export/import.html" %}
+{% load i18n %}
+
+{% block content %}
+{% block ie_header %}
+<div style="
+  display:flex;
+  align-items:center;
+  gap:14px;
+  background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);
+  color:#fff;
+  border-radius:14px;
+  padding:24px 28px;
+  margin-bottom:24px;
+  box-shadow:0 6px 24px rgba(37,99,235,.25);
+">
+  <span style="font-size:36px;line-height:1;">⬆</span>
+  <div>
+    <h1 style="margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;">
+      Импорт данных
+    </h1>
+    <p style="margin:4px 0 0;opacity:.8;font-size:13px;">
+      Загрузите файл Excel, CSV или JSON — данные будут проверены перед сохранением.
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+<!-- Format info pills -->
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+  {% for fmt in media_type %}
+  <span style="
+    padding:5px 14px;border-radius:20px;
+    background:#eff6ff;color:#2563eb;
+    border:1.5px solid #bfdbfe;
+    font-size:12px;font-weight:700;
+  ">{{ fmt }}</span>
+  {% empty %}
+  <span style="padding:5px 14px;border-radius:20px;background:#eff6ff;color:#2563eb;border:1.5px solid #bfdbfe;font-size:12px;font-weight:700;">XLSX</span>
+  <span style="padding:5px 14px;border-radius:20px;background:#eff6ff;color:#2563eb;border:1.5px solid #bfdbfe;font-size:12px;font-weight:700;">CSV</span>
+  <span style="padding:5px 14px;border-radius:20px;background:#eff6ff;color:#2563eb;border:1.5px solid #bfdbfe;font-size:12px;font-weight:700;">JSON</span>
+  <span style="padding:5px 14px;border-radius:20px;background:#eff6ff;color:#2563eb;border:1.5px solid #bfdbfe;font-size:12px;font-weight:700;">TSV</span>
+  {% endfor %}
+</div>
+
+<div class="import-form-container">
+
+  {% if errors %}
+  <div style="
+    background:#fef2f2;border:1px solid #fca5a5;
+    border-left:4px solid #dc2626;
+    border-radius:10px;padding:16px 20px;margin-bottom:20px;
+  ">
+    <strong style="color:#991b1b;">❌ Ошибки в файле</strong>
+    <ul style="margin:8px 0 0;padding-left:20px;color:#7f1d1d;font-size:13px;">
+      {% for error in errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- File drop zone -->
+    <div id="ie-dropzone" style="
+      border:2px dashed #bfdbfe;
+      border-radius:12px;
+      background:#f8fafc;
+      padding:36px 24px;
+      text-align:center;
+      cursor:pointer;
+      transition:border-color .2s,background .2s;
+      margin-bottom:20px;
+    "
+    ondragover="this.style.borderColor='#2563eb';this.style.background='#eff6ff'"
+    ondragleave="this.style.borderColor='#bfdbfe';this.style.background='#f8fafc'"
+    ondrop="handleDrop(event)"
+    onclick="document.getElementById('id_import_file').click()"
+    >
+      <div style="font-size:40px;margin-bottom:8px;">📂</div>
+      <p style="margin:0;font-weight:700;color:#1e40af;font-size:15px;">
+        Перетащите файл или нажмите для выбора
+      </p>
+      <p id="ie-filename" style="margin:8px 0 0;font-size:13px;color:#64748b;">
+        Поддерживаются: .xlsx, .xls, .csv, .json, .tsv
+      </p>
+    </div>
+
+    <!-- Hidden real input -->
+    <div style="display:none;">
+      {{ form.import_file }}
+    </div>
+
+    <!-- Format selector -->
+    <div style="margin-bottom:20px;">
+      <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;display:block;margin-bottom:8px;">
+        Формат файла
+      </label>
+      <div style="
+        border:1px solid #e2e8f0;border-radius:8px;
+        background:#fff;overflow:hidden;
+      ">
+        {{ form.input_format }}
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <button type="submit" style="
+      width:100%;
+      padding:14px;
+      background:linear-gradient(135deg,#3b82f6,#2563eb);
+      color:#fff;
+      border:none;
+      border-radius:10px;
+      font-size:15px;
+      font-weight:700;
+      cursor:pointer;
+      letter-spacing:.01em;
+      transition:filter .15s,transform .12s,box-shadow .15s;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+    "
+    onmouseover="this.style.filter='brightness(1.08)';this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(37,99,235,.35)'"
+    onmouseout="this.style.filter='';this.style.transform='';this.style.boxShadow=''"
+    >
+      🔍 Предпросмотр импорта
+    </button>
+  </form>
+</div>
+
+<!-- Tips card -->
+<div style="
+  max-width:680px;margin-top:20px;
+  background:#fff;border:1px solid #e2e8f0;
+  border-radius:14px;padding:24px 28px;
+">
+  <h3 style="margin:0 0 12px;font-size:14px;font-weight:700;color:#1e3a5f;">
+    💡 Подсказки
+  </h3>
+  <ul style="margin:0;padding-left:20px;font-size:13px;color:#475569;line-height:1.8;">
+    <li>Первая строка CSV/XLSX должна содержать заголовки столбцов.</li>
+    <li>Если строка с таким <code>id</code> уже существует — она будет <strong>обновлена</strong>.</li>
+    <li>Новые строки без <code>id</code> будут <strong>созданы</strong> автоматически.</li>
+    <li>Неизменённые строки пропускаются (skip_unchanged = true).</li>
+    <li>Данные проверяются <strong>до сохранения</strong> — ошибки выводятся в предпросмотре.</li>
+  </ul>
+</div>
+
+<script>
+document.getElementById('id_import_file').addEventListener('change', function () {
+  var name = this.files[0] ? this.files[0].name : 'Файл не выбран';
+  document.getElementById('ie-filename').textContent = '📄 ' + name;
+  document.getElementById('ie-dropzone').style.borderColor = '#10b981';
+  document.getElementById('ie-dropzone').style.background  = '#f0fdf4';
+});
+
+function handleDrop(e) {
+  e.preventDefault();
+  var input = document.getElementById('id_import_file');
+  var dt    = e.dataTransfer;
+  if (dt.files.length) {
+    // Assign dropped file to the input
+    var list = new DataTransfer();
+    list.items.add(dt.files[0]);
+    input.files = list.files;
+    input.dispatchEvent(new Event('change'));
+  }
+  document.getElementById('ie-dropzone').style.borderColor = '#bfdbfe';
+  document.getElementById('ie-dropzone').style.background  = '#f8fafc';
+}
+</script>
+{% endblock %}

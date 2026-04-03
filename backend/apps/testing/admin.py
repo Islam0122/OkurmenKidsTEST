@@ -1,13 +1,32 @@
+"""
+admin.py — Testing app with django-import-export on every model.
+
+UI philosophy
+─────────────
+• Export: any model, any format (xlsx / csv / json / tsv)
+• Import: Test + Question + QuestionOption only (sessions/attempts are read-only)
+• Custom export action in every list view so staff can export a selection
+• Compact, icon-rich import/export buttons injected via change_list_template
+"""
+
+from __future__ import annotations
+
 import nested_admin
 from django.contrib import admin, messages
 from django.db.models import Count
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
+from import_export import resources
+from import_export.admin import ImportExportModelAdmin, ExportActionModelAdmin
 
 from .models import (
     Answer, AttemptStatus, Question, QuestionOption,
     QuestionType, StudentAttempt, Test, TestSession,
+)
+from .resources import (
+    TestResource, QuestionResource, QuestionOptionResource,
+    TestSessionResource, StudentAttemptResource, AnswerResource,
 )
 
 
@@ -38,7 +57,7 @@ STATUS_COLORS = {
 CHOICE_TYPES = {QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE}
 
 
-# ── Nested inlines (для TestAdmin) ────────────────────────────────────────────
+# ── Nested inlines ────────────────────────────────────────────────────────────
 
 class QuestionOptionNestedInline(nested_admin.NestedTabularInline):
     model               = QuestionOption
@@ -60,8 +79,6 @@ class QuestionNestedInline(nested_admin.NestedStackedInline):
     inlines             = [QuestionOptionNestedInline]
 
 
-# ── Обычные inlines ───────────────────────────────────────────────────────────
-
 class QuestionOptionInline(admin.TabularInline):
     model               = QuestionOption
     extra               = 2
@@ -72,14 +89,14 @@ class QuestionOptionInline(admin.TabularInline):
 
 
 class AnswerInline(admin.TabularInline):
-    model               = Answer
-    extra               = 0
-    can_delete          = False
-    max_num             = 0
+    model           = Answer
+    extra           = 0
+    can_delete      = False
+    max_num         = 0
     verbose_name        = 'Ответ пользователя'
     verbose_name_plural = 'Ответы пользователя'
-    readonly_fields     = ['question_display', 'answer_display', 'correctness_badge', 'answered_at']
-    fields              = ['question_display', 'answer_display', 'correctness_badge', 'answered_at']
+    readonly_fields = ['question_display', 'answer_display', 'correctness_badge', 'answered_at']
+    fields          = ['question_display', 'answer_display', 'correctness_badge', 'answered_at']
 
     def question_display(self, obj):
         return obj.question.text[:80] if obj and obj.question_id else '—'
@@ -103,21 +120,20 @@ class AnswerInline(admin.TabularInline):
 
 
 class AttemptInline(admin.TabularInline):
-    model               = StudentAttempt
-    extra               = 0
-    can_delete          = False
-    max_num             = 0
-    show_change_link    = True
+    model            = StudentAttempt
+    extra            = 0
+    can_delete       = False
+    max_num          = 0
+    show_change_link = True
     verbose_name        = 'Попытка прохождения'
     verbose_name_plural = 'Попытки прохождения'
-    readonly_fields     = ['student_name', 'status_badge', 'score_display', 'started_at', 'finished_at']
-    fields              = ['student_name', 'status_badge', 'score_display', 'started_at', 'finished_at']
+    readonly_fields  = ['student_name', 'status_badge', 'score_display', 'started_at', 'finished_at']
+    fields           = ['student_name', 'status_badge', 'score_display', 'started_at', 'finished_at']
 
     def status_badge(self, obj):
         if not obj:
             return '—'
-        color = STATUS_COLORS.get(obj.status, '#95a5a6')
-        return _badge(obj.get_status_display(), color)
+        return _badge(obj.get_status_display(), STATUS_COLORS.get(obj.status, '#95a5a6'))
     status_badge.short_description = 'Статус'
 
     def score_display(self, obj):
@@ -128,16 +144,21 @@ class AttemptInline(admin.TabularInline):
     score_display.short_description = 'Балл'
 
 
-# ── 📚 Тестирование: Тест ─────────────────────────────────────────────────────
+# ── 📚 Test ───────────────────────────────────────────────────────────────────
 
 @admin.register(Test)
-class TestAdmin(nested_admin.NestedModelAdmin):
-    list_display    = ['title', 'level_badge', 'active_badge', 'question_count_display', 'created_at']
-    list_filter     = ['level', 'is_active']
-    search_fields   = ['title', 'description']
-    ordering        = ['title']
-    inlines         = [QuestionNestedInline]
-    readonly_fields = ['created_at', 'updated_at', 'question_count_display']
+class TestAdmin(nested_admin.NestedModelAdmin, ImportExportModelAdmin):
+    """
+    Full import + export.
+    Staff can import new tests via Excel/CSV and export any selection.
+    """
+    resource_classes    = [TestResource]
+    list_display        = ['title', 'level_badge', 'active_badge', 'question_count_display', 'created_at']
+    list_filter         = ['level', 'is_active']
+    search_fields       = ['title', 'description']
+    ordering            = ['title']
+    inlines             = [QuestionNestedInline]
+    readonly_fields     = ['created_at', 'updated_at', 'question_count_display']
     fieldsets = [
         ('Основное',   {'fields': ['title', 'description', 'level', 'is_active']}),
         ('Статистика', {
@@ -146,12 +167,16 @@ class TestAdmin(nested_admin.NestedModelAdmin):
         }),
     ]
 
+    # ── MRO fix: NestedModelAdmin + ImportExportModelAdmin both override
+    #    change_list_template.  We want IE's template (it adds import/export
+    #    buttons) while still getting nested-admin's JS.
+    change_list_template = 'admin/import_export/change_list.html'
+
     def get_queryset(self, request):
         return super().get_queryset(request).annotate(_qcount=Count('questions'))
 
     def level_badge(self, obj):
-        color = DIFFICULTY_COLORS.get(obj.level, '#95a5a6')
-        return _badge(obj.get_level_display(), color)
+        return _badge(obj.get_level_display(), DIFFICULTY_COLORS.get(obj.level, '#95a5a6'))
     level_badge.short_description = 'Уровень'
 
     def active_badge(self, obj):
@@ -159,27 +184,27 @@ class TestAdmin(nested_admin.NestedModelAdmin):
     active_badge.short_description = 'Статус'
 
     def question_count_display(self, obj):
-        count = getattr(obj, '_qcount', None)
-        if count is None:
-            count = obj.questions.count()
+        count = getattr(obj, '_qcount', None) or obj.questions.count()
         return format_html('<strong>{}</strong> вопросов', count)
     question_count_display.short_description = 'Кол-во вопросов'
     question_count_display.admin_order_field = '_qcount'
 
 
-# ── 📚 Тестирование: Вопрос ───────────────────────────────────────────────────
+# ── 📚 Question ───────────────────────────────────────────────────────────────
 
 @admin.register(Question)
-class QuestionAdmin(admin.ModelAdmin):
-    list_display    = [
+class QuestionAdmin(ImportExportModelAdmin):
+    """Full import + export for questions."""
+    resource_classes = [QuestionResource]
+    list_display     = [
         'short_text', 'test', 'type_badge', 'difficulty_badge',
         'language', 'order', 'options_link',
     ]
-    list_filter     = ['question_type', 'difficulty', 'language', 'test']
-    search_fields   = ['text', 'test__title']
-    ordering        = ['test', 'order']
-    inlines         = [QuestionOptionInline]
-    readonly_fields = ['created_at', 'options_link']
+    list_filter      = ['question_type', 'difficulty', 'language', 'test']
+    search_fields    = ['text', 'test__title']
+    ordering         = ['test', 'order']
+    inlines          = [QuestionOptionInline]
+    readonly_fields  = ['created_at', 'options_link']
     fieldsets = [
         ('Основное',   {'fields': ['test', 'text', 'question_type', 'difficulty', 'order']}),
         ('Код / Язык', {'fields': ['language', 'metadata']}),
@@ -201,25 +226,13 @@ class QuestionAdmin(admin.ModelAdmin):
         if obj.question_type in CHOICE_TYPES:
             opts = obj.options.all()
             if opts.count() < 2:
-                self.message_user(
-                    request,
-                    'Предупреждение: вопрос с выбором должен иметь минимум 2 варианта.',
-                    messages.WARNING,
-                )
+                self.message_user(request, 'Предупреждение: вопрос с выбором должен иметь минимум 2 варианта.', messages.WARNING)
             if not opts.filter(is_correct=True).exists():
-                self.message_user(
-                    request,
-                    'Предупреждение: не отмечен ни один правильный вариант ответа.',
-                    messages.WARNING,
-                )
+                self.message_user(request, 'Предупреждение: не отмечен ни один правильный вариант ответа.', messages.WARNING)
         else:
             if obj.options.exists():
                 obj.options.all().delete()
-                self.message_user(
-                    request,
-                    'Варианты ответов удалены — тип вопроса не поддерживает варианты.',
-                    messages.WARNING,
-                )
+                self.message_user(request, 'Варианты ответов удалены — тип вопроса не поддерживает варианты.', messages.WARNING)
 
     def short_text(self, obj):
         return obj.text[:70]
@@ -236,10 +249,7 @@ class QuestionAdmin(admin.ModelAdmin):
     type_badge.short_description = 'Тип'
 
     def difficulty_badge(self, obj):
-        return _badge(
-            obj.get_difficulty_display(),
-            DIFFICULTY_COLORS.get(obj.difficulty, '#95a5a6'),
-        )
+        return _badge(obj.get_difficulty_display(), DIFFICULTY_COLORS.get(obj.difficulty, '#95a5a6'))
     difficulty_badge.short_description = 'Сложность'
 
     def options_link(self, obj):
@@ -251,10 +261,12 @@ class QuestionAdmin(admin.ModelAdmin):
     options_link.short_description = 'Варианты ответов'
 
 
-# ── 📚 Тестирование: Вариант ответа ──────────────────────────────────────────
+# ── 📚 QuestionOption ─────────────────────────────────────────────────────────
 
 @admin.register(QuestionOption)
-class QuestionOptionAdmin(admin.ModelAdmin):
+class QuestionOptionAdmin(ImportExportModelAdmin):
+    """Full import + export for question options."""
+    resource_classes = [QuestionOptionResource]
     list_display  = ['text_short', 'question', 'correct_badge', 'order']
     list_filter   = ['is_correct', 'question__question_type']
     search_fields = ['text', 'question__text']
@@ -269,20 +281,25 @@ class QuestionOptionAdmin(admin.ModelAdmin):
     correct_badge.short_description = 'Правильный'
 
 
-# ── 📊 Результаты: Сессия тестирования ───────────────────────────────────────
+# ── 📊 TestSession ────────────────────────────────────────────────────────────
 
 @admin.register(TestSession)
-class TestSessionAdmin(admin.ModelAdmin):
-    list_display    = [
+class TestSessionAdmin(ExportActionModelAdmin):
+    """
+    Export-only (sessions must not be created via spreadsheet import).
+    Staff can still bulk-export any selection.
+    """
+    resource_classes    = [TestSessionResource]
+    list_display        = [
         'session_label', 'test', 'status_badge', 'valid_indicator',
         'expires_display', 'attempts_display', 'created_at',
     ]
-    list_filter     = ['status', 'is_active', 'test']
-    search_fields   = ['key', 'title', 'test__title']
-    ordering        = ['-created_at']
-    inlines         = [AttemptInline]
-    actions         = ['force_expire']
-    readonly_fields = [
+    list_filter         = ['status', 'is_active', 'test']
+    search_fields       = ['key', 'title', 'test__title']
+    ordering            = ['-created_at']
+    inlines             = [AttemptInline]
+    actions             = ['force_expire', 'export_admin_action']
+    readonly_fields     = [
         'id', 'key', 'created_at', 'expires_at',
         'valid_indicator', 'expires_display', 'attempts_display',
     ]
@@ -292,10 +309,8 @@ class TestSessionAdmin(admin.ModelAdmin):
         ('Попытки', {'fields': ['attempts_display']}),
     ]
 
-    def has_change_permission(self, request, obj=None):
-        return False
-    def has_delete_permission(self, request, obj=None):
-        return False
+    def has_change_permission(self, request, obj=None): return False
+    def has_delete_permission(self, request, obj=None): return False
 
     def session_label(self, obj):
         if obj.title:
@@ -307,8 +322,7 @@ class TestSessionAdmin(admin.ModelAdmin):
     session_label.short_description = 'Сессия'
 
     def status_badge(self, obj):
-        color = STATUS_COLORS.get(obj.status, '#95a5a6')
-        return _badge(obj.get_status_display(), color)
+        return _badge(obj.get_status_display(), STATUS_COLORS.get(obj.status, '#95a5a6'))
     status_badge.short_description = 'Статус'
 
     def valid_indicator(self, obj):
@@ -322,16 +336,10 @@ class TestSessionAdmin(admin.ModelAdmin):
             return '—'
         now = timezone.now()
         if obj.expires_at < now:
-            return format_html(
-                '<span style="color:#e74c3c;">Истекла {}</span>',
-                obj.expires_at.strftime('%d.%m %H:%M'),
-            )
+            return format_html('<span style="color:#e74c3c;">Истекла {}</span>', obj.expires_at.strftime('%d.%m %H:%M'))
         mins  = int((obj.expires_at - now).total_seconds() / 60)
         color = '#e74c3c' if mins < 15 else '#f39c12' if mins < 60 else '#27ae60'
-        return format_html(
-            '<span style="color:{};">{}м до истечения ({})</span>',
-            color, mins, obj.expires_at.strftime('%H:%M'),
-        )
+        return format_html('<span style="color:{};">{}м до истечения ({})</span>', color, mins, obj.expires_at.strftime('%H:%M'))
     expires_display.short_description = 'Истекает'
 
     def attempts_display(self, obj):
@@ -344,33 +352,31 @@ class TestSessionAdmin(admin.ModelAdmin):
 
     @admin.action(description='⛔ Принудительно завершить сессию')
     def force_expire(self, request, queryset):
-        count = 0
-        for session in queryset.filter(is_active=True):
-            session.deactivate()
-            count += 1
+        count = sum(1 for s in queryset.filter(is_active=True) if not s.deactivate() or True)
         self.message_user(request, f'Завершено сессий: {count}.', messages.SUCCESS)
 
 
-# ── 📊 Результаты: Попытка прохождения ───────────────────────────────────────
+# ── 📊 StudentAttempt ─────────────────────────────────────────────────────────
 
 @admin.register(StudentAttempt)
-class StudentAttemptAdmin(admin.ModelAdmin):
-    list_display    = [
+class StudentAttemptAdmin(ExportActionModelAdmin):
+    """Export-only — attempts are created by students, never imported."""
+    resource_classes = [StudentAttemptResource]
+    list_display     = [
         'student_name', 'test_title', 'status_badge',
         'score_display', 'started_at', 'finished_at', 'duration_display',
     ]
-    list_filter     = ['status', 'session__test', 'started_at']
-    search_fields   = ['student_name', 'session__test__title', 'session__key', 'session__title']
-    ordering        = ['-started_at']
-    inlines         = [AnswerInline]
-    readonly_fields = [
+    list_filter      = ['status', 'session__test', 'started_at']
+    search_fields    = ['student_name', 'session__test__title', 'session__key', 'session__title']
+    ordering         = ['-started_at']
+    inlines          = [AnswerInline]
+    readonly_fields  = [
         'id', 'session', 'student_name', 'started_at',
         'finished_at', 'score', 'status', 'duration_display', 'score_display',
     ]
     fieldsets = [
         ('Студент',   {'fields': ['id', 'student_name', 'session']}),
-        ('Результат', {'fields': ['status', 'score_display', 'started_at',
-                                   'finished_at', 'duration_display']}),
+        ('Результат', {'fields': ['status', 'score_display', 'started_at', 'finished_at', 'duration_display']}),
     ]
 
     def has_add_permission(self, request):
@@ -383,18 +389,14 @@ class StudentAttemptAdmin(admin.ModelAdmin):
     def status_badge(self, obj):
         if not obj:
             return '—'
-        color = STATUS_COLORS.get(obj.status, '#95a5a6')
-        return _badge(obj.get_status_display(), color)
+        return _badge(obj.get_status_display(), STATUS_COLORS.get(obj.status, '#95a5a6'))
     status_badge.short_description = 'Статус'
 
     def score_display(self, obj):
         if not obj or not obj.is_finished:
             return '—'
         color = '#27ae60' if obj.score >= 70 else '#f39c12' if obj.score >= 40 else '#e74c3c'
-        return format_html(
-            '<strong style="font-size:16px;color:{};">{:.1f}%</strong>',
-            color, obj.score,
-        )
+        return format_html('<strong style="font-size:16px;color:{};">{:.1f}%</strong>', color, obj.score)
     score_display.short_description = 'Балл'
 
     def duration_display(self, obj):
@@ -408,22 +410,20 @@ class StudentAttemptAdmin(admin.ModelAdmin):
     duration_display.short_description = 'Длительность'
 
 
-# ── 📊 Результаты: Ответ пользователя ────────────────────────────────────────
+# ── 📊 Answer ─────────────────────────────────────────────────────────────────
 
 @admin.register(Answer)
-class AnswerAdmin(admin.ModelAdmin):
-    list_display    = ['student_name', 'question_short', 'answer_preview',
-                       'correctness_badge', 'answered_at']
-    list_filter     = ['is_correct', 'question__question_type']
-    search_fields   = ['attempt__student_name', 'question__text']
-    ordering        = ['-answered_at']
-    readonly_fields = [f.name for f in Answer._meta.fields]
+class AnswerAdmin(ExportActionModelAdmin):
+    """Export-only — answers are submitted by students, never imported."""
+    resource_classes = [AnswerResource]
+    list_display     = ['student_name', 'question_short', 'answer_preview', 'correctness_badge', 'answered_at']
+    list_filter      = ['is_correct', 'question__question_type']
+    search_fields    = ['attempt__student_name', 'question__text']
+    ordering         = ['-answered_at']
+    readonly_fields  = [f.name for f in Answer._meta.fields]
 
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
+    def has_add_permission(self, request):    return False
+    def has_change_permission(self, request, obj=None): return False
 
     def student_name(self, obj):
         return obj.attempt.student_name if obj and obj.attempt_id else '—'
@@ -449,6 +449,8 @@ class AnswerAdmin(admin.ModelAdmin):
         return _badge('✓ Верно', '#27ae60') if obj.is_correct else _badge('✗ Неверно', '#e74c3c')
     correctness_badge.short_description = 'Результат'
 
+
 from django.contrib.auth.models import Group, User
 admin.site.unregister(Group)
 admin.site.unregister(User)
+

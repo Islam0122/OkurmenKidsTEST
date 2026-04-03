@@ -29,6 +29,7 @@ THIRD_PARTY_APPS = [
     'corsheaders',
     'drf_spectacular',
     'django_filters',
+    'import_export',
 ]
 
 LOCAL_APPS: list[str] = [
@@ -155,7 +156,7 @@ JAZZMIN_SETTINGS = {
     "site_logo": "img/logo.png",
     "site_logo_classes": "elevation-2",    # круглая обрезка
     "site_icon": "img/logo.png",
-    "custom_css": "css/admin.css",
+    "custom_css": "css/import_export.css",
 
     # Branding
     "site_title":        "OkurmenKids Admin",
@@ -174,22 +175,22 @@ JAZZMIN_SETTINGS = {
 
 
 
-    "custom_links": {
-        "testing": [
-            {
-                "name":        "Импорт вопросов",
-                "url":         "/testing1/import/",
-                "icon":        "fas fa-file-upload",
-                "permissions": ["auth.change_user"],
-            },
-            {
-                "name":        "Экспорт вопросов",
-                "url":         "/testing1/export/",
-                "icon":        "fas fa-file-download",
-                "permissions": ["auth.change_user"],
-            },
-        ],
-    },
+    # "custom_links": {
+    #     "testing": [
+    #         {
+    #             "name":        "Импорт вопросов",
+    #             "url":         "/testing1/import/",
+    #             "icon":        "fas fa-file-upload",
+    #             "permissions": ["auth.change_user"],
+    #         },
+    #         {
+    #             "name":        "Экспорт вопросов",
+    #             "url":         "/testing1/export/",
+    #             "icon":        "fas fa-file-download",
+    #             "permissions": ["auth.change_user"],
+    #         },
+    #     ],
+    # },
 
     "icons": {
         "auth":                        "fas fa-users-cog",
@@ -280,3 +281,7 @@ JAZZMIN_SETTINGS = {
 #         "success": "btn-success",
 #     },
 # }
+
+IMPORT_EXPORT_USE_TRANSACTIONS = True      # wrap import in DB transaction
+IMPORT_EXPORT_SKIP_ADMIN_LOG   = False     # log every imported row (default)
+IMPORT_EXPORT_CHUNK_SIZE       = 100
