@@ -16,6 +16,7 @@ def health_check(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('nested_admin/', include('nested_admin.urls')),
 
     # Health
     path('health/', health_check, name='health-check'),

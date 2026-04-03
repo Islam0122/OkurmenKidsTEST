@@ -6,8 +6,6 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 
 
-# ─── Choices ──────────────────────────────────────────────────────────────────
-
 class QuestionType(models.TextChoices):
     SINGLE_CHOICE   = 'single_choice',   'Один вариант'
     MULTIPLE_CHOICE = 'multiple_choice', 'Несколько вариантов'
@@ -41,8 +39,6 @@ class AttemptStatus(models.TextChoices):
     EXPIRED  = 'expired',  'Просрочена'
 
 
-# ─── Test ─────────────────────────────────────────────────────────────────────
-
 class Test(models.Model):
     id          = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title       = models.CharField(max_length=255, unique=True, verbose_name='Название')
@@ -67,8 +63,6 @@ class Test(models.Model):
     def question_count(self):
         return self.questions.count()
 
-
-# ─── Question ─────────────────────────────────────────────────────────────────
 
 class Question(models.Model):
     id            = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -108,8 +102,6 @@ class Question(models.Model):
             raise ValidationError({'language': 'Для code-вопроса обязателен язык.'})
 
 
-# ─── QuestionOption ───────────────────────────────────────────────────────────
-
 class QuestionOption(models.Model):
     id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     question   = models.ForeignKey(
@@ -128,8 +120,6 @@ class QuestionOption(models.Model):
     def __str__(self):
         return f'{"✓" if self.is_correct else "✗"} {self.text[:60]}'
 
-
-# ─── TestSession ──────────────────────────────────────────────────────────────
 
 SESSION_TTL_HOURS = 2
 
@@ -165,8 +155,8 @@ class TestSession(models.Model):
 
     class Meta:
         ordering            = ['-created_at']
-        verbose_name        = 'Сессия'
-        verbose_name_plural = 'Сессии'
+        verbose_name        = 'Сессия тестирования'
+        verbose_name_plural = 'Сессии тестирования'
 
     def __str__(self):
         label = self.title or self.key
@@ -186,8 +176,6 @@ class TestSession(models.Model):
         self.save(update_fields=['is_active', 'status'])
 
 
-# ─── StudentAttempt ───────────────────────────────────────────────────────────
-
 class StudentAttempt(models.Model):
     id           = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     session      = models.ForeignKey(
@@ -206,8 +194,8 @@ class StudentAttempt(models.Model):
     class Meta:
         ordering            = ['-started_at']
         unique_together     = [('session', 'student_name')]
-        verbose_name        = 'Попытка'
-        verbose_name_plural = 'Попытки'
+        verbose_name        = 'Попытка прохождения'
+        verbose_name_plural = 'Попытки прохождения'
 
     def __str__(self):
         return f'{self.student_name} → {self.session}'
@@ -239,8 +227,6 @@ class StudentAttempt(models.Model):
         self.score = round((correct / answers.count()) * 100, 2)
 
 
-# ─── Answer ───────────────────────────────────────────────────────────────────
-
 class Answer(models.Model):
     id               = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     attempt          = models.ForeignKey(
@@ -259,8 +245,8 @@ class Answer(models.Model):
     class Meta:
         ordering            = ['answered_at']
         unique_together     = [('attempt', 'question')]
-        verbose_name        = 'Ответ'
-        verbose_name_plural = 'Ответы'
+        verbose_name        = 'Ответ пользователя'
+        verbose_name_plural = 'Ответы пользователей'
 
     def __str__(self):
         return f'{self.attempt.student_name} → Q:{self.question_id}'

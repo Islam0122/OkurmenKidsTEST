@@ -1,3 +1,4 @@
+import nested_admin
 from django.contrib import admin, messages
 from django.db.models import Count
 from django.urls import reverse
@@ -37,17 +38,29 @@ STATUS_COLORS = {
 CHOICE_TYPES = {QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE}
 
 
-# ── Inlines ───────────────────────────────────────────────────────────────────
+# ── Nested inlines (для TestAdmin) ────────────────────────────────────────────
 
-class QuestionInline(admin.TabularInline):
+class QuestionOptionNestedInline(nested_admin.NestedTabularInline):
+    model               = QuestionOption
+    extra               = 2
+    fields              = ['text', 'is_correct', 'order']
+    ordering            = ['order']
+    verbose_name        = 'Вариант ответа'
+    verbose_name_plural = 'Варианты ответов'
+
+
+class QuestionNestedInline(nested_admin.NestedStackedInline):
     model               = Question
     extra               = 0
-    fields              = ['text', 'question_type', 'difficulty', 'order', 'language']
+    fields              = ['text', 'question_type', 'difficulty', 'language', 'order']
     ordering            = ['order']
     show_change_link    = True
     verbose_name        = 'Вопрос'
     verbose_name_plural = 'Вопросы'
+    inlines             = [QuestionOptionNestedInline]
 
+
+# ── Обычные inlines ───────────────────────────────────────────────────────────
 
 class QuestionOptionInline(admin.TabularInline):
     model               = QuestionOption
@@ -63,8 +76,8 @@ class AnswerInline(admin.TabularInline):
     extra               = 0
     can_delete          = False
     max_num             = 0
-    verbose_name        = 'Ответ'
-    verbose_name_plural = 'Ответы студента'
+    verbose_name        = 'Ответ пользователя'
+    verbose_name_plural = 'Ответы пользователя'
     readonly_fields     = ['question_display', 'answer_display', 'correctness_badge', 'answered_at']
     fields              = ['question_display', 'answer_display', 'correctness_badge', 'answered_at']
 
@@ -95,8 +108,8 @@ class AttemptInline(admin.TabularInline):
     can_delete          = False
     max_num             = 0
     show_change_link    = True
-    verbose_name        = 'Попытка'
-    verbose_name_plural = 'Попытки студентов'
+    verbose_name        = 'Попытка прохождения'
+    verbose_name_plural = 'Попытки прохождения'
     readonly_fields     = ['student_name', 'status_badge', 'score_display', 'started_at', 'finished_at']
     fields              = ['student_name', 'status_badge', 'score_display', 'started_at', 'finished_at']
 
@@ -115,15 +128,15 @@ class AttemptInline(admin.TabularInline):
     score_display.short_description = 'Балл'
 
 
-# ── Test ──────────────────────────────────────────────────────────────────────
+# ── 📚 Тестирование: Тест ─────────────────────────────────────────────────────
 
 @admin.register(Test)
-class TestAdmin(admin.ModelAdmin):
+class TestAdmin(nested_admin.NestedModelAdmin):
     list_display    = ['title', 'level_badge', 'active_badge', 'question_count_display', 'created_at']
     list_filter     = ['level', 'is_active']
     search_fields   = ['title', 'description']
     ordering        = ['title']
-    inlines         = [QuestionInline]
+    inlines         = [QuestionNestedInline]
     readonly_fields = ['created_at', 'updated_at', 'question_count_display']
     fieldsets = [
         ('Основное',   {'fields': ['title', 'description', 'level', 'is_active']}),
@@ -150,11 +163,11 @@ class TestAdmin(admin.ModelAdmin):
         if count is None:
             count = obj.questions.count()
         return format_html('<strong>{}</strong> вопросов', count)
-    question_count_display.short_description = 'Вопросов'
+    question_count_display.short_description = 'Кол-во вопросов'
     question_count_display.admin_order_field = '_qcount'
 
 
-# ── Question ──────────────────────────────────────────────────────────────────
+# ── 📚 Тестирование: Вопрос ───────────────────────────────────────────────────
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
@@ -173,13 +186,18 @@ class QuestionAdmin(admin.ModelAdmin):
         ('Системное',  {'fields': ['created_at', 'options_link'], 'classes': ['collapse']}),
     ]
 
+    def get_changeform_initial_data(self, request):
+        initial = super().get_changeform_initial_data(request)
+        if 'test' in request.GET:
+            initial['test'] = request.GET['test']
+        return initial
+
     class Media:
         js = ('admin/js/question_options_toggle.js',)
 
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
         obj = form.instance
-
         if obj.question_type in CHOICE_TYPES:
             opts = obj.options.all()
             if opts.count() < 2:
@@ -233,7 +251,7 @@ class QuestionAdmin(admin.ModelAdmin):
     options_link.short_description = 'Варианты ответов'
 
 
-# ── QuestionOption ────────────────────────────────────────────────────────────
+# ── 📚 Тестирование: Вариант ответа ──────────────────────────────────────────
 
 @admin.register(QuestionOption)
 class QuestionOptionAdmin(admin.ModelAdmin):
@@ -251,7 +269,7 @@ class QuestionOptionAdmin(admin.ModelAdmin):
     correct_badge.short_description = 'Правильный'
 
 
-# ── TestSession ───────────────────────────────────────────────────────────────
+# ── 📊 Результаты: Сессия тестирования ───────────────────────────────────────
 
 @admin.register(TestSession)
 class TestSessionAdmin(admin.ModelAdmin):
@@ -269,13 +287,17 @@ class TestSessionAdmin(admin.ModelAdmin):
         'valid_indicator', 'expires_display', 'attempts_display',
     ]
     fieldsets = [
-        ('Сессия', {'fields': ['id', 'key', 'test', 'title', 'status', 'is_active']}),
-        ('Время',  {'fields': ['created_at', 'expires_at', 'valid_indicator', 'expires_display']}),
+        ('Сессия',  {'fields': ['id', 'key', 'test', 'title', 'status', 'is_active']}),
+        ('Время',   {'fields': ['created_at', 'expires_at', 'valid_indicator', 'expires_display']}),
         ('Попытки', {'fields': ['attempts_display']}),
     ]
 
+    def has_change_permission(self, request, obj=None):
+        return False
+    def has_delete_permission(self, request, obj=None):
+        return False
+
     def session_label(self, obj):
-        """Show title if set, otherwise truncated key."""
         if obj.title:
             return format_html(
                 '{} <span style="color:#999;font-size:11px;">({})</span>',
@@ -329,7 +351,7 @@ class TestSessionAdmin(admin.ModelAdmin):
         self.message_user(request, f'Завершено сессий: {count}.', messages.SUCCESS)
 
 
-# ── StudentAttempt ────────────────────────────────────────────────────────────
+# ── 📊 Результаты: Попытка прохождения ───────────────────────────────────────
 
 @admin.register(StudentAttempt)
 class StudentAttemptAdmin(admin.ModelAdmin):
@@ -386,7 +408,7 @@ class StudentAttemptAdmin(admin.ModelAdmin):
     duration_display.short_description = 'Длительность'
 
 
-# ── Answer ────────────────────────────────────────────────────────────────────
+# ── 📊 Результаты: Ответ пользователя ────────────────────────────────────────
 
 @admin.register(Answer)
 class AnswerAdmin(admin.ModelAdmin):
