@@ -1,148 +1,93 @@
 /*
- * OkurmenKids Admin — Import / Export UI polish
- * Requires: django-import-export, jazzmin
- *
- * Drop this file into:  backend/static/css/import_export.css
- * Then reference it in JAZZMIN_SETTINGS → "custom_css" (or add a <link>
- * in a base_site.html override).
+ * OkurmenKids Admin — Import / Export UI
+ * Uses Bootstrap Icons (already bundled by Jazzmin ≥ 1.8).
+ * Place at: backend/static/css/import_export.css
+ * Reference in JAZZMIN_SETTINGS → "custom_css": "css/import_export.css"
  */
 
-/* ── Toolbar row that holds Import / Export buttons ─────────────────────── */
-.ie-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 12px 16px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  margin-bottom: 18px;
-}
+/* ── Bootstrap Icons shim (Jazzmin bundles them; this is a fallback) ──────── */
+@import url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css");
 
-.ie-toolbar-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: #94a3b8;
-  margin-right: 4px;
-}
+/* ── Import / Export action buttons ──────────────────────────────────────── */
 
-/* ── Base button ─────────────────────────────────────────────────────────── */
-.ie-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 16px;
-  border-radius: 7px;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1;
-  cursor: pointer;
-  border: none;
-  text-decoration: none !important;
-  transition: filter .15s ease, transform .1s ease, box-shadow .15s ease;
-}
-
-.ie-btn:hover  { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.12); }
-.ie-btn:active { filter: brightness(.96);  transform: translateY(0);    box-shadow: none; }
-
-/* ── Colour variants ─────────────────────────────────────────────────────── */
-.ie-btn-import {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  color: #fff;
-}
-
-.ie-btn-export {
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: #fff;
-}
-
-.ie-btn-template {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: #fff;
-}
-
-.ie-btn-secondary {
-  background: #f1f5f9;
-  color: #334155;
-  border: 1px solid #cbd5e1;
-}
-
-/* ── Override django-import-export's default button styling ──────────────── */
-/* The lib renders plain <a class="button"> links — we piggyback them */
+/* django-import-export renders plain <a class="button"> links */
 a.import-link,
 a.export-link {
   display: inline-flex !important;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   padding: 8px 18px !important;
   border-radius: 8px !important;
   font-weight: 600 !important;
   font-size: 13px !important;
   text-decoration: none !important;
-  transition: filter .15s, transform .12s, box-shadow .15s !important;
+  transition: filter .15s ease, transform .12s ease, box-shadow .15s ease !important;
   border: none !important;
+  margin: 0 4px 0 0;
 }
 
 a.import-link {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
   color: #fff !important;
 }
 
 a.export-link {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  background: linear-gradient(135deg, #10b981, #059669) !important;
   color: #fff !important;
 }
 
-a.import-link::before { content: "⬆\00a0"; }
-a.export-link::before { content: "⬇\00a0"; }
+/* Bootstrap Icon pseudo-elements replace emoji */
+a.import-link::before {
+  font-family: "bootstrap-icons";
+  content: "\f30a"; /* bi-cloud-upload */
+  font-size: 14px;
+}
+
+a.export-link::before {
+  font-family: "bootstrap-icons";
+  content: "\f30b"; /* bi-cloud-download */
+  font-size: 14px;
+}
 
 a.import-link:hover,
 a.export-link:hover {
   filter: brightness(1.1) !important;
   transform: translateY(-1px) !important;
-  box-shadow: 0 4px 14px rgba(0,0,0,.18) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .18) !important;
+  color: #fff !important;
 }
 
-/* ── Import / Export form pages ──────────────────────────────────────────── */
-.import-form-container,
+a.import-link:active,
+a.export-link:active {
+  transform: translateY(0) !important;
+}
+
+/* ── Object-tools bar (top-right of change list) ──────────────────────────── */
+.object-tools a.import-link,
+.object-tools a.export-link {
+  line-height: 1 !important;
+}
+
+/* ── Export format form page ─────────────────────────────────────────────── */
 .export-form-container {
   max-width: 680px;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
   padding: 32px 36px;
-  box-shadow: 0 4px 24px rgba(0,0,0,.06);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, .06);
   margin-top: 8px;
 }
 
-/* Format selector pills */
-.ie-format-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 12px 0 20px;
-}
-
-.ie-format-pill {
-  padding: 6px 16px;
-  border-radius: 20px;
-  border: 2px solid #e2e8f0;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all .15s;
-  background: #f8fafc;
-  color: #475569;
-}
-
-.ie-format-pill:hover,
-.ie-format-pill.active {
-  border-color: #3b82f6;
-  background: #eff6ff;
-  color: #2563eb;
+/* ── Import page form ─────────────────────────────────────────────────────── */
+.import-form-container {
+  max-width: 680px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 32px 36px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, .06);
+  margin-top: 8px;
 }
 
 /* ── Result / confirmation page ──────────────────────────────────────────── */
@@ -178,9 +123,9 @@ a.export-link:hover {
   margin-top: 6px;
 }
 
-.import-result-card.error .irc-number { color: #dc2626; }
+.import-result-card.error .irc-number  { color: #dc2626; }
 .import-result-card.success .irc-number { color: #059669; }
-.import-result-card.warn .irc-number { color: #d97706; }
+.import-result-card.warn .irc-number   { color: #d97706; }
 
 /* ── Diff / preview table ─────────────────────────────────────────────────── */
 .results table {
@@ -192,7 +137,7 @@ a.export-link:hover {
 .results table th {
   background: #1e3a5f;
   color: #fff;
-  padding: 10px 10px;
+  padding: 10px;
   text-align: left;
   font-weight: 600;
   font-size: 12px;
@@ -207,19 +152,13 @@ a.export-link:hover {
 }
 
 .results table tr:hover td { background: #f8fafc; }
-
-.results .new  td { background: #f0fdf4; }
+.results .new    td { background: #f0fdf4; }
 .results .update td { background: #fffbeb; }
 .results .delete td { background: #fef2f2; }
-.results .skip td  { background: #fafafa; color: #94a3b8; }
-.results .error td { background: #fef2f2; color: #991b1b; }
+.results .skip   td { background: #fafafa; color: #94a3b8; }
+.results .error  td { background: #fef2f2; color: #991b1b; }
 
-/* ── Action export button in list view ───────────────────────────────────── */
-select[name="action"] option[value="export_admin_action"] {
-  font-weight: 600;
-}
-
-/* ── Responsive tweaks ───────────────────────────────────────────────────── */
+/* ── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .import-form-container,
   .export-form-container { padding: 20px; }

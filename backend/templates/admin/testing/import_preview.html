@@ -11,17 +11,15 @@
   .preview-table td { padding:8px; border-bottom:1px solid #e8e8e8; vertical-align:top; }
   .preview-table tr:hover { background:#f5f8ff; }
   .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
-  .badge-single  { background:#d1ecf1; color:#0c5460; }
-  .badge-multiple{ background:#d4edda; color:#155724; }
-  .badge-text    { background:#fff3cd; color:#856404; }
-  .badge-code    { background:#f8d7da; color:#721c24; }
-  .badge-easy    { background:#d4edda; color:#155724; }
-  .badge-medium  { background:#fff3cd; color:#856404; }
-  .badge-hard    { background:#f8d7da; color:#721c24; }
-  .error-row td  { background:#fff8f8 !important; }
-  .error-msg     { color:#c0392b; font-size:12px; }
-  .summary-box   { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
-  .summary-card  { background:#fff; border:1px solid #ddd; border-radius:8px; padding:16px 24px; min-width:140px; text-align:center; }
+  .badge-single   { background:#d1ecf1; color:#0c5460; }
+  .badge-multiple { background:#d4edda; color:#155724; }
+  .badge-text     { background:#fff3cd; color:#856404; }
+  .badge-code     { background:#f8d7da; color:#721c24; }
+  .badge-easy     { background:#d4edda; color:#155724; }
+  .badge-medium   { background:#fff3cd; color:#856404; }
+  .badge-hard     { background:#f8d7da; color:#721c24; }
+  .summary-box  { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+  .summary-card { background:#fff; border:1px solid #ddd; border-radius:8px; padding:16px 24px; min-width:140px; text-align:center; }
   .summary-card .num { font-size:28px; font-weight:700; color:#1f4e79; }
   .summary-card .lbl { font-size:12px; color:#666; margin-top:4px; }
 </style>
@@ -29,15 +27,14 @@
 
 {% block content %}
 <div class="content-header">
-  <h1>🔍 Import Preview</h1>
+  <h1>Import Preview</h1>
   {% if preview.is_valid %}
-    <p class="help" style="color:#155724;">✅ File is valid. Review below, then confirm.</p>
+    <p class="help" style="color:#155724;">File is valid. Review below, then confirm.</p>
   {% else %}
-    <p class="help" style="color:#721c24;">❌ {{ preview.errors|length }} validation error(s) found. Fix the file and re-upload.</p>
+    <p class="help" style="color:#721c24;">{{ preview.errors|length }} validation error(s) found. Fix the file and re-upload.</p>
   {% endif %}
 </div>
 
-<!-- Summary cards -->
 <div class="summary-box">
   <div class="summary-card">
     <div class="num">{{ preview.rows|length }}</div>
@@ -49,11 +46,10 @@
   </div>
   <div class="summary-card">
     <div class="num">{{ preview.errors|length }}</div>
-    <div class="lbl" style="{% if preview.errors %}color:#c0392b;{% endif %}">Errors</div>
+    <div class="lbl" {% if preview.errors %}style="color:#c0392b;"{% endif %}>Errors</div>
   </div>
 </div>
 
-<!-- Tests to be created -->
 {% if preview.test_titles %}
 <div class="module" style="padding:16px; margin-bottom:16px;">
   <strong>Tests:</strong>
@@ -63,7 +59,6 @@
 </div>
 {% endif %}
 
-<!-- Errors -->
 {% if preview.errors %}
 <div class="module" style="padding:16px; background:#fff8f8; border-left:4px solid #c0392b; margin-bottom:20px;">
   <h2 style="color:#c0392b;">Validation Errors</h2>
@@ -72,13 +67,12 @@
       <li>{{ err }}</li>
     {% endfor %}
   </ul>
-  <a href="{% url 'testing:import-questions' %}" class="button default" style="margin-top:12px;">
-    ← Re-upload File
+  <a href="{% url 'testing-import-questions' %}" class="button default" style="margin-top:12px;">
+    Re-upload File
   </a>
 </div>
 {% endif %}
 
-<!-- Preview table -->
 {% if preview.rows %}
 <div class="module" style="overflow-x:auto; margin-bottom:24px;">
   <table class="preview-table">
@@ -106,8 +100,7 @@
             {% elif row.question_type == 'text' %}badge-text
             {% else %}badge-code{% endif %}
           ">
-            {{ row.question_type }}
-            {% if row.language %}({{ row.language }}){% endif %}
+            {{ row.question_type }}{% if row.language %} ({{ row.language }}){% endif %}
           </span>
         </td>
         <td>
@@ -130,21 +123,20 @@
 </div>
 {% endif %}
 
-<!-- Action buttons -->
 <div style="display:flex; gap:12px; flex-wrap:wrap;">
   {% if preview.is_valid %}
-    <form method="post" action="{% url 'testing:confirm-import' %}">
+    <form method="post" action="{% url 'testing-confirm-import' %}">
       {% csrf_token %}
       <button type="submit" class="button default" style="padding:12px 28px; font-size:15px;">
-        ✅ Confirm Import ({{ preview.rows|length }} questions)
+        Confirm Import ({{ preview.rows|length }} questions)
       </button>
     </form>
   {% endif %}
-  <a href="{% url 'testing:import-questions' %}" class="button" style="padding:12px 20px;">
-    ← Re-upload
+  <a href="{% url 'testing-import-questions' %}" class="button" style="padding:12px 20px;">
+    Re-upload
   </a>
-  <a href="{% url 'testing:download-template' %}" class="button" style="padding:12px 20px;">
-    ⬇ Template
+  <a href="{% url 'testing-download-template' %}" class="button" style="padding:12px 20px;">
+    Download Template
   </a>
 </div>
 {% endblock %}

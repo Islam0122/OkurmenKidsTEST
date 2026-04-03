@@ -1,12 +1,11 @@
 """
 admin.py — Testing app with django-import-export on every model.
 
-UI philosophy
-─────────────
-• Export: any model, any format (xlsx / csv / json / tsv)
-• Import: Test + Question + QuestionOption only (sessions/attempts are read-only)
-• Custom export action in every list view so staff can export a selection
-• Compact, icon-rich import/export buttons injected via change_list_template
+Inheritance order (critical):
+    ImportExportModelAdmin FIRST, NestedModelAdmin SECOND
+    → resolves change_list_template MRO conflict
+
+Bootstrap Icons used throughout (Jazzmin loads Bootstrap Icons by default).
 """
 
 from __future__ import annotations
@@ -17,7 +16,6 @@ from django.db.models import Count
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
-from import_export import resources
 from import_export.admin import ImportExportModelAdmin, ExportActionModelAdmin
 
 from .models import (
@@ -25,23 +23,24 @@ from .models import (
     QuestionType, StudentAttempt, Test, TestSession,
 )
 from .resources import (
-    TestResource, QuestionResource, QuestionOptionResource,
-    TestSessionResource, StudentAttemptResource, AnswerResource,
+    AnswerResource, QuestionOptionResource, QuestionResource,
+    StudentAttemptResource, TestResource, TestSessionResource,
 )
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _badge(text, color):
+def _badge(text: str, color: str) -> str:
     return format_html(
-        '<span style="background:{};color:#fff;padding:2px 8px;'
-        'border-radius:10px;font-size:11px;font-weight:600;">{}</span>',
+        '<span style="background:{};color:#fff;padding:2px 10px;'
+        'border-radius:12px;font-size:11px;font-weight:600;'
+        'letter-spacing:.03em;white-space:nowrap;">{}</span>',
         color, text,
     )
 
 
 DIFFICULTY_COLORS = {
-    'easy':   '#27ae60',
+    'easy':   '#2ecc71',
     'medium': '#f39c12',
     'hard':   '#e74c3c',
 }
@@ -49,7 +48,7 @@ DIFFICULTY_COLORS = {
 STATUS_COLORS = {
     'created':  '#3498db',
     'running':  '#27ae60',
-    'finished': '#95a5a6',
+    'finished': '#7f8c8d',
     'active':   '#27ae60',
     'expired':  '#e74c3c',
 }
@@ -57,7 +56,7 @@ STATUS_COLORS = {
 CHOICE_TYPES = {QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE}
 
 
-# ── Nested inlines ────────────────────────────────────────────────────────────
+# ── Inlines ───────────────────────────────────────────────────────────────────
 
 class QuestionOptionNestedInline(nested_admin.NestedTabularInline):
     model               = QuestionOption
@@ -114,7 +113,7 @@ class AnswerInline(admin.TabularInline):
 
     def correctness_badge(self, obj):
         if not obj or obj.is_correct is None:
-            return _badge('На проверке', '#95a5a6')
+            return _badge('На проверке', '#7f8c8d')
         return _badge('✓ Верно', '#27ae60') if obj.is_correct else _badge('✗ Неверно', '#e74c3c')
     correctness_badge.short_description = 'Результат'
 
@@ -133,7 +132,7 @@ class AttemptInline(admin.TabularInline):
     def status_badge(self, obj):
         if not obj:
             return '—'
-        return _badge(obj.get_status_display(), STATUS_COLORS.get(obj.status, '#95a5a6'))
+        return _badge(obj.get_status_display(), STATUS_COLORS.get(obj.status, '#7f8c8d'))
     status_badge.short_description = 'Статус'
 
     def score_display(self, obj):
@@ -144,21 +143,21 @@ class AttemptInline(admin.TabularInline):
     score_display.short_description = 'Балл'
 
 
-# ── 📚 Test ───────────────────────────────────────────────────────────────────
+# ── Test ──────────────────────────────────────────────────────────────────────
 
 @admin.register(Test)
-class TestAdmin(nested_admin.NestedModelAdmin, ImportExportModelAdmin):
+class TestAdmin(ImportExportModelAdmin, nested_admin.NestedModelAdmin):
     """
-    Full import + export.
-    Staff can import new tests via Excel/CSV and export any selection.
+    ImportExportModelAdmin FIRST so its change_list_template wins.
+    nested_admin.NestedModelAdmin SECOND for nested inline JS.
     """
-    resource_classes    = [TestResource]
-    list_display        = ['title', 'level_badge', 'active_badge', 'question_count_display', 'created_at']
-    list_filter         = ['level', 'is_active']
-    search_fields       = ['title', 'description']
-    ordering            = ['title']
-    inlines             = [QuestionNestedInline]
-    readonly_fields     = ['created_at', 'updated_at', 'question_count_display']
+    resource_classes = [TestResource]
+    list_display     = ['title', 'level_badge', 'active_badge', 'question_count_display', 'created_at']
+    list_filter      = ['level', 'is_active']
+    search_fields    = ['title', 'description']
+    ordering         = ['title']
+    inlines          = [QuestionNestedInline]
+    readonly_fields  = ['created_at', 'updated_at', 'question_count_display']
     fieldsets = [
         ('Основное',   {'fields': ['title', 'description', 'level', 'is_active']}),
         ('Статистика', {
@@ -167,37 +166,38 @@ class TestAdmin(nested_admin.NestedModelAdmin, ImportExportModelAdmin):
         }),
     ]
 
-    # ── MRO fix: NestedModelAdmin + ImportExportModelAdmin both override
-    #    change_list_template.  We want IE's template (it adds import/export
-    #    buttons) while still getting nested-admin's JS.
-    change_list_template = 'admin/import_export/change_list.html'
+    # ImportExportModelAdmin sets change_list_template = 'admin/import_export/change_list.html'
+    # That template includes import/export buttons — do NOT override it here.
 
     def get_queryset(self, request):
         return super().get_queryset(request).annotate(_qcount=Count('questions'))
 
     def level_badge(self, obj):
-        return _badge(obj.get_level_display(), DIFFICULTY_COLORS.get(obj.level, '#95a5a6'))
+        return _badge(obj.get_level_display(), DIFFICULTY_COLORS.get(obj.level, '#7f8c8d'))
     level_badge.short_description = 'Уровень'
+    level_badge.admin_order_field = 'level'
 
     def active_badge(self, obj):
-        return _badge('Активен', '#27ae60') if obj.is_active else _badge('Скрыт', '#95a5a6')
+        return _badge('Активен', '#27ae60') if obj.is_active else _badge('Скрыт', '#7f8c8d')
     active_badge.short_description = 'Статус'
+    active_badge.admin_order_field = 'is_active'
 
     def question_count_display(self, obj):
-        count = getattr(obj, '_qcount', None) or obj.questions.count()
+        count = getattr(obj, '_qcount', None)
+        if count is None:
+            count = obj.questions.count()
         return format_html('<strong>{}</strong> вопросов', count)
     question_count_display.short_description = 'Кол-во вопросов'
     question_count_display.admin_order_field = '_qcount'
 
 
-# ── 📚 Question ───────────────────────────────────────────────────────────────
+# ── Question ──────────────────────────────────────────────────────────────────
 
 @admin.register(Question)
 class QuestionAdmin(ImportExportModelAdmin):
-    """Full import + export for questions."""
     resource_classes = [QuestionResource]
     list_display     = [
-        'short_text', 'test', 'type_badge', 'difficulty_badge',
+        'short_text', 'test_link', 'type_badge', 'difficulty_badge',
         'language', 'order', 'options_link',
     ]
     list_filter      = ['question_type', 'difficulty', 'language', 'test']
@@ -217,26 +217,40 @@ class QuestionAdmin(ImportExportModelAdmin):
             initial['test'] = request.GET['test']
         return initial
 
-    class Media:
-        js = ('admin/js/question_options_toggle.js',)
-
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
         obj = form.instance
         if obj.question_type in CHOICE_TYPES:
             opts = obj.options.all()
             if opts.count() < 2:
-                self.message_user(request, 'Предупреждение: вопрос с выбором должен иметь минимум 2 варианта.', messages.WARNING)
+                self.message_user(
+                    request,
+                    'Предупреждение: вопрос с выбором должен иметь минимум 2 варианта.',
+                    messages.WARNING,
+                )
             if not opts.filter(is_correct=True).exists():
-                self.message_user(request, 'Предупреждение: не отмечен ни один правильный вариант ответа.', messages.WARNING)
-        else:
-            if obj.options.exists():
-                obj.options.all().delete()
-                self.message_user(request, 'Варианты ответов удалены — тип вопроса не поддерживает варианты.', messages.WARNING)
+                self.message_user(
+                    request,
+                    'Предупреждение: не отмечен ни один правильный вариант ответа.',
+                    messages.WARNING,
+                )
+        elif obj.options.exists():
+            obj.options.all().delete()
+            self.message_user(
+                request,
+                'Варианты ответов удалены — тип вопроса не поддерживает варианты.',
+                messages.WARNING,
+            )
 
     def short_text(self, obj):
         return obj.text[:70]
     short_text.short_description = 'Вопрос'
+
+    def test_link(self, obj):
+        url = reverse('admin:testing_test_change', args=[obj.test_id])
+        return format_html('<a href="{}">{}</a>', url, obj.test.title)
+    test_link.short_description = 'Тест'
+    test_link.admin_order_field = 'test__title'
 
     def type_badge(self, obj):
         colors = {
@@ -245,12 +259,14 @@ class QuestionAdmin(ImportExportModelAdmin):
             'text':            '#f39c12',
             'code':            '#e74c3c',
         }
-        return _badge(obj.get_question_type_display(), colors.get(obj.question_type, '#95a5a6'))
+        return _badge(obj.get_question_type_display(), colors.get(obj.question_type, '#7f8c8d'))
     type_badge.short_description = 'Тип'
+    type_badge.admin_order_field = 'question_type'
 
     def difficulty_badge(self, obj):
-        return _badge(obj.get_difficulty_display(), DIFFICULTY_COLORS.get(obj.difficulty, '#95a5a6'))
+        return _badge(obj.get_difficulty_display(), DIFFICULTY_COLORS.get(obj.difficulty, '#7f8c8d'))
     difficulty_badge.short_description = 'Сложность'
+    difficulty_badge.admin_order_field = 'difficulty'
 
     def options_link(self, obj):
         if not obj or not obj.pk:
@@ -261,13 +277,12 @@ class QuestionAdmin(ImportExportModelAdmin):
     options_link.short_description = 'Варианты ответов'
 
 
-# ── 📚 QuestionOption ─────────────────────────────────────────────────────────
+# ── QuestionOption ────────────────────────────────────────────────────────────
 
 @admin.register(QuestionOption)
 class QuestionOptionAdmin(ImportExportModelAdmin):
-    """Full import + export for question options."""
     resource_classes = [QuestionOptionResource]
-    list_display  = ['text_short', 'question', 'correct_badge', 'order']
+    list_display  = ['text_short', 'question_link', 'correct_badge', 'order']
     list_filter   = ['is_correct', 'question__question_type']
     search_fields = ['text', 'question__text']
     ordering      = ['question', 'order']
@@ -276,22 +291,26 @@ class QuestionOptionAdmin(ImportExportModelAdmin):
         return obj.text[:80]
     text_short.short_description = 'Вариант'
 
+    def question_link(self, obj):
+        url = reverse('admin:testing_question_change', args=[obj.question_id])
+        return format_html('<a href="{}">{}</a>', url, obj.question.text[:50])
+    question_link.short_description = 'Вопрос'
+    question_link.admin_order_field = 'question__text'
+
     def correct_badge(self, obj):
         return _badge('✓ Верный', '#27ae60') if obj.is_correct else _badge('✗', '#bdc3c7')
     correct_badge.short_description = 'Правильный'
+    correct_badge.admin_order_field = 'is_correct'
 
 
-# ── 📊 TestSession ────────────────────────────────────────────────────────────
+# ── TestSession ───────────────────────────────────────────────────────────────
 
 @admin.register(TestSession)
 class TestSessionAdmin(ExportActionModelAdmin):
-    """
-    Export-only (sessions must not be created via spreadsheet import).
-    Staff can still bulk-export any selection.
-    """
+    """Export-only — sessions must not be created via spreadsheet import."""
     resource_classes    = [TestSessionResource]
     list_display        = [
-        'session_label', 'test', 'status_badge', 'valid_indicator',
+        'session_label', 'test_link', 'status_badge', 'valid_indicator',
         'expires_display', 'attempts_display', 'created_at',
     ]
     list_filter         = ['status', 'is_active', 'test']
@@ -309,8 +328,11 @@ class TestSessionAdmin(ExportActionModelAdmin):
         ('Попытки', {'fields': ['attempts_display']}),
     ]
 
-    def has_change_permission(self, request, obj=None): return False
-    def has_delete_permission(self, request, obj=None): return False
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
     def session_label(self, obj):
         if obj.title:
@@ -321,9 +343,16 @@ class TestSessionAdmin(ExportActionModelAdmin):
         return obj.key
     session_label.short_description = 'Сессия'
 
+    def test_link(self, obj):
+        url = reverse('admin:testing_test_change', args=[obj.test_id])
+        return format_html('<a href="{}">{}</a>', url, obj.test.title)
+    test_link.short_description = 'Тест'
+    test_link.admin_order_field = 'test__title'
+
     def status_badge(self, obj):
-        return _badge(obj.get_status_display(), STATUS_COLORS.get(obj.status, '#95a5a6'))
+        return _badge(obj.get_status_display(), STATUS_COLORS.get(obj.status, '#7f8c8d'))
     status_badge.short_description = 'Статус'
+    status_badge.admin_order_field = 'status'
 
     def valid_indicator(self, obj):
         if not obj or not obj.pk:
@@ -336,10 +365,16 @@ class TestSessionAdmin(ExportActionModelAdmin):
             return '—'
         now = timezone.now()
         if obj.expires_at < now:
-            return format_html('<span style="color:#e74c3c;">Истекла {}</span>', obj.expires_at.strftime('%d.%m %H:%M'))
+            return format_html(
+                '<span style="color:#e74c3c;">Истекла {}</span>',
+                obj.expires_at.strftime('%d.%m %H:%M'),
+            )
         mins  = int((obj.expires_at - now).total_seconds() / 60)
         color = '#e74c3c' if mins < 15 else '#f39c12' if mins < 60 else '#27ae60'
-        return format_html('<span style="color:{};">{}м до истечения ({})</span>', color, mins, obj.expires_at.strftime('%H:%M'))
+        return format_html(
+            '<span style="color:{};">{}м до истечения ({})</span>',
+            color, mins, obj.expires_at.strftime('%H:%M'),
+        )
     expires_display.short_description = 'Истекает'
 
     def attempts_display(self, obj):
@@ -350,20 +385,23 @@ class TestSessionAdmin(ExportActionModelAdmin):
         return format_html('{} активных / {} всего', active, total)
     attempts_display.short_description = 'Попытки'
 
-    @admin.action(description='⛔ Принудительно завершить сессию')
+    @admin.action(description='Принудительно завершить сессию')
     def force_expire(self, request, queryset):
-        count = sum(1 for s in queryset.filter(is_active=True) if not s.deactivate() or True)
+        count = 0
+        for s in queryset.filter(is_active=True):
+            s.deactivate()
+            count += 1
         self.message_user(request, f'Завершено сессий: {count}.', messages.SUCCESS)
 
 
-# ── 📊 StudentAttempt ─────────────────────────────────────────────────────────
+# ── StudentAttempt ────────────────────────────────────────────────────────────
 
 @admin.register(StudentAttempt)
 class StudentAttemptAdmin(ExportActionModelAdmin):
     """Export-only — attempts are created by students, never imported."""
     resource_classes = [StudentAttemptResource]
     list_display     = [
-        'student_name', 'test_title', 'status_badge',
+        'student_name', 'test_title', 'session_link', 'status_badge',
         'score_display', 'started_at', 'finished_at', 'duration_display',
     ]
     list_filter      = ['status', 'session__test', 'started_at']
@@ -385,19 +423,30 @@ class StudentAttemptAdmin(ExportActionModelAdmin):
     def test_title(self, obj):
         return obj.session.test.title if obj and obj.session_id else '—'
     test_title.short_description = 'Тест'
+    test_title.admin_order_field = 'session__test__title'
+
+    def session_link(self, obj):
+        if not obj or not obj.session_id:
+            return '—'
+        url   = reverse('admin:testing_testsession_change', args=[obj.session_id])
+        label = obj.session.title or obj.session.key[:16]
+        return format_html('<a href="{}">{}</a>', url, label)
+    session_link.short_description = 'Сессия'
 
     def status_badge(self, obj):
         if not obj:
             return '—'
-        return _badge(obj.get_status_display(), STATUS_COLORS.get(obj.status, '#95a5a6'))
+        return _badge(obj.get_status_display(), STATUS_COLORS.get(obj.status, '#7f8c8d'))
     status_badge.short_description = 'Статус'
+    status_badge.admin_order_field = 'status'
 
     def score_display(self, obj):
         if not obj or not obj.is_finished:
             return '—'
         color = '#27ae60' if obj.score >= 70 else '#f39c12' if obj.score >= 40 else '#e74c3c'
-        return format_html('<strong style="font-size:16px;color:{};">{:.1f}%</strong>', color, obj.score)
+        return format_html('<strong style="font-size:15px;color:{};">{:.1f}%</strong>', color, obj.score)
     score_display.short_description = 'Балл'
+    score_display.admin_order_field = 'score'
 
     def duration_display(self, obj):
         if not obj:
@@ -410,7 +459,7 @@ class StudentAttemptAdmin(ExportActionModelAdmin):
     duration_display.short_description = 'Длительность'
 
 
-# ── 📊 Answer ─────────────────────────────────────────────────────────────────
+# ── Answer ────────────────────────────────────────────────────────────────────
 
 @admin.register(Answer)
 class AnswerAdmin(ExportActionModelAdmin):
@@ -422,12 +471,16 @@ class AnswerAdmin(ExportActionModelAdmin):
     ordering         = ['-answered_at']
     readonly_fields  = [f.name for f in Answer._meta.fields]
 
-    def has_add_permission(self, request):    return False
-    def has_change_permission(self, request, obj=None): return False
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
     def student_name(self, obj):
         return obj.attempt.student_name if obj and obj.attempt_id else '—'
     student_name.short_description = 'Студент'
+    student_name.admin_order_field = 'attempt__student_name'
 
     def question_short(self, obj):
         return obj.question.text[:60] if obj and obj.question_id else '—'
@@ -445,12 +498,15 @@ class AnswerAdmin(ExportActionModelAdmin):
 
     def correctness_badge(self, obj):
         if not obj or obj.is_correct is None:
-            return _badge('На проверке', '#95a5a6')
+            return _badge('На проверке', '#7f8c8d')
         return _badge('✓ Верно', '#27ae60') if obj.is_correct else _badge('✗ Неверно', '#e74c3c')
     correctness_badge.short_description = 'Результат'
+    correctness_badge.admin_order_field = 'is_correct'
 
 
-from django.contrib.auth.models import Group, User
+# ── Unregister default auth models ───────────────────────────────────────────
+
+from django.contrib.auth.models import Group, User  # noqa: E402
+
 admin.site.unregister(Group)
 admin.site.unregister(User)
-

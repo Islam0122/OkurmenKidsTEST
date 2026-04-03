@@ -11,7 +11,10 @@ logger = logging.getLogger(__name__)
 
 @staff_member_required
 def download_template(request):
-    response = HttpResponse(generate_template(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response = HttpResponse(
+        generate_template(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
     response['Content-Disposition'] = 'attachment; filename="questions_template.xlsx"'
     return response
 
@@ -42,14 +45,20 @@ def confirm_import(request):
     encoded = request.session.pop('import_file', None)
     if not encoded:
         messages.error(request, 'Session expired. Upload again.')
-        return redirect('testing:import-questions')
+        # Use the new non-namespaced name
+        return redirect('testing-import-questions')
     preview = parse_excel(base64.b64decode(encoded))
     if not preview.is_valid:
         messages.error(request, f'{len(preview.errors)} validation errors. Import cancelled.')
-        return redirect('testing:import-questions')
+        return redirect('testing-import-questions')
     result = commit_import(preview)
     if result.success:
-        messages.success(request, f'Done: {result.tests_created} tests, {result.questions_created} questions, {result.options_created} options.')
+        messages.success(
+            request,
+            f'Done: {result.tests_created} tests, '
+            f'{result.questions_created} questions, '
+            f'{result.options_created} options.',
+        )
     else:
         for e in result.errors:
             messages.error(request, e)
@@ -59,6 +68,9 @@ def confirm_import(request):
 @staff_member_required
 def export_questions(request):
     ids = [t.strip() for t in request.GET.get('test_ids', '').split(',') if t.strip()] or None
-    response = HttpResponse(export_questions_to_excel(ids), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response = HttpResponse(
+        export_questions_to_excel(ids),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
     response['Content-Disposition'] = 'attachment; filename="questions_export.xlsx"'
     return response

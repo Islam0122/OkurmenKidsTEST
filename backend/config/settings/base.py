@@ -175,22 +175,22 @@ JAZZMIN_SETTINGS = {
 
 
 
-    # "custom_links": {
-    #     "testing": [
-    #         {
-    #             "name":        "Импорт вопросов",
-    #             "url":         "/testing1/import/",
-    #             "icon":        "fas fa-file-upload",
-    #             "permissions": ["auth.change_user"],
-    #         },
-    #         {
-    #             "name":        "Экспорт вопросов",
-    #             "url":         "/testing1/export/",
-    #             "icon":        "fas fa-file-download",
-    #             "permissions": ["auth.change_user"],
-    #         },
-    #     ],
-    # },
+    "custom_links": {
+        "testing": [
+            {
+                "name":        "Импорт вопросов",
+                "url":         "/testing1/import/",
+                "icon":        "fas fa-file-upload",
+                "permissions": ["auth.change_user"],
+            },
+            {
+                "name":        "Экспорт вопросов",
+                "url":         "/testing1/export/",
+                "icon":        "fas fa-file-download",
+                "permissions": ["auth.change_user"],
+            },
+        ],
+    },
 
     "icons": {
         "auth":                        "fas fa-users-cog",
