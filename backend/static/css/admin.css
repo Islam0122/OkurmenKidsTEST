@@ -1,0 +1,16 @@
+.brand-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    div {
+        background: transparent;
+
+    }
+}
+
+.brand-link .brand-image {
+    max-height: 90px;
+    width: auto;
+    object-fit: contain;
+}

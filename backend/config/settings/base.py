@@ -97,8 +97,10 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -150,27 +152,27 @@ from .cors import *
 
 
 JAZZMIN_SETTINGS = {
+    "site_logo": "img/logo.png",
+    "site_logo_classes": "elevation-2",    # круглая обрезка
+    "site_icon": "img/logo.png",
+    "custom_css": "css/admin.css",
+
     # Branding
     "site_title":        "OkurmenKids Admin",
     "site_header":       "OkurmenKids",
     "site_brand":        "OkurmenKids",
-    "site_logo":         None,
-    "site_logo_classes": "img-circle",
-    "site_icon":         None,
+
     "welcome_sign":      "Добро пожаловать в OkurmenKids 🚀",
     "copyright":         "OkurmenKids © 2026 — Islam Developer",
 
-    "search_model": ["auth.user"],
 
     "topmenu_links": [
         {"name": "Сайт",     "url": "/",                          "new_window": True},
         {"name": "API Docs", "url": "/api/schema/swagger-ui/",    "new_window": True},
-        {"model": "auth.user"},
+
     ],
 
-    "usermenu_links": [
-        {"model": "auth.user"},
-    ],
+
 
     "custom_links": {
         "testing": [
@@ -224,43 +226,57 @@ JAZZMIN_SETTINGS = {
     "hide_models":           [],
     "related_modal_active":  True,
     "use_google_fonts_cdn":  False,
-    "show_ui_builder":       False,
+    # "show_ui_builder":       True,
     "changeform_format":     "horizontal_tabs",
     "changeform_format_overrides": {
         "auth.user":  "collapsible",
         "auth.group": "vertical_tabs",
     },
 }
-
-JAZZMIN_UI_TWEAKS = {
-    "navbar_small_text": False,
-    "footer_small_text": True,
-    "body_small_text": True,
-    "brand_small_text": False,
-    "brand_colour": "navbar-primary",
-    "accent": "accent-primary",
-    "navbar": "navbar-dark",
-    "no_navbar_border": True,
-    "navbar_fixed": True,
-    "layout_boxed": False,
-    "footer_fixed": False,
-    "sidebar_fixed": True,
-    "sidebar": "sidebar-dark-primary",
-    "sidebar_nav_small_text": False,
-    "sidebar_disable_expand": False,
-    "sidebar_nav_child_indent": True,
-    "sidebar_nav_compact_style": True,
-    "sidebar_nav_legacy_style": False,
-    "sidebar_nav_flat_style": False,
-    "theme": "flatly",
-"default_theme_mode": "auto",
-    "button_classes": {
-        "primary": "btn-primary",
-        "secondary": "btn-secondary",
-        "info": "btn-info",
-        "warning": "btn-warning",
-        "danger": "btn-danger",
-        "success": "btn-success",
-    },
-}
-
+#
+# JAZZMIN_UI_TWEAKS = {
+#     # ── ТЕМА ─────────────────────────────────────
+#     "theme": "darkly",
+#     "default_theme_mode": "dark",
+#
+#     # ── NAVBAR (чище и легче) ─────────────────────
+#     "navbar": "navbar-dark",
+#     "navbar_small_text": False,
+#     "navbar_fixed": True,
+#     "no_navbar_border": True,
+#
+#     # ── SIDEBAR (SaaS стиль) ──────────────────────
+#     "sidebar": "sidebar-dark-primary",
+#     "sidebar_fixed": True,
+#     "sidebar_nav_small_text": False,
+#     "sidebar_nav_compact_style": True,
+#     "sidebar_nav_child_indent": True,
+#     "sidebar_nav_legacy_style": False,
+#     "sidebar_nav_flat_style": True,
+#     "sidebar_disable_expand": False,
+#
+#     # ── BRAND (минимализм) ────────────────────────
+#     "brand_colour": "navbar-dark",
+#     "brand_small_text": True,
+#
+#     # ── ACCENT (аккуратный фокус) ─────────────────
+#     "accent": "accent-info",
+#
+#     # ── BODY (чистота интерфейса) ────────────────
+#     "body_small_text": False,
+#     "layout_boxed": False,
+#
+#     # ── FOOTER (минимальный) ──────────────────────
+#     "footer_small_text": True,
+#     "footer_fixed": False,
+#
+#     # ── КНОПКИ (чуть softer стиль) ────────────────
+#     "button_classes": {
+#         "primary": "btn-primary",
+#         "secondary": "btn-outline-secondary",
+#         "info": "btn-info",
+#         "warning": "btn-warning",
+#         "danger": "btn-danger",
+#         "success": "btn-success",
+#     },
+# }

@@ -448,3 +448,7 @@ class AnswerAdmin(admin.ModelAdmin):
             return _badge('На проверке', '#95a5a6')
         return _badge('✓ Верно', '#27ae60') if obj.is_correct else _badge('✗ Неверно', '#e74c3c')
     correctness_badge.short_description = 'Результат'
+
+from django.contrib.auth.models import Group, User
+admin.site.unregister(Group)
+admin.site.unregister(User)
