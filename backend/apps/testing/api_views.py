@@ -74,7 +74,10 @@ class SessionCreateView(APIView):
         ser = SessionCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         try:
-            result = SessionService.create_session(str(ser.validated_data['test_id']))
+            result = SessionService.create_session(
+                test_id=str(ser.validated_data['test_id']),
+                title=ser.validated_data.get('title', ''),
+            )
         except ValidationError as exc:
             return _err(exc)
         return Response(
@@ -84,7 +87,7 @@ class SessionCreateView(APIView):
 
 
 class SessionValidateView(APIView):
-    """POST /api/v1/sessions/validate — student validates key (alias of enter)."""
+    """POST /api/v1/sessions/validate — student validates key."""
     permission_classes = [AllowAny]
     throttle_classes   = [AnonRateThrottle]
 

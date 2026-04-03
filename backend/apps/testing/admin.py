@@ -1,5 +1,3 @@
-# admin.py
-
 from django.contrib import admin, messages
 from django.db.models import Count
 from django.urls import reverse
@@ -36,7 +34,6 @@ STATUS_COLORS = {
     'expired':  '#e74c3c',
 }
 
-# Типы, у которых ДОЛЖНЫ быть варианты ответов
 CHOICE_TYPES = {QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE}
 
 
@@ -53,11 +50,6 @@ class QuestionInline(admin.TabularInline):
 
 
 class QuestionOptionInline(admin.TabularInline):
-    """
-    Всегда присутствует в DOM (статический инлайн).
-    Видимостью управляет JS в QuestionAdmin.Media.
-    При сохранении TEXT/CODE варианты удаляются в save_related.
-    """
     model               = QuestionOption
     extra               = 2
     fields              = ['text', 'is_correct', 'order']
@@ -86,8 +78,7 @@ class AnswerInline(admin.TabularInline):
         if obj.answer_text:
             return obj.answer_text[:120]
         if obj.selected_options:
-            joined = ', '.join(str(v) for v in obj.selected_options)
-            return f'Варианты: {joined}'
+            return f'Варианты: {", ".join(str(v) for v in obj.selected_options)}'
         return '—'
     answer_display.short_description = 'Ответ'
 
@@ -165,18 +156,8 @@ class TestAdmin(admin.ModelAdmin):
 
 # ── Question ──────────────────────────────────────────────────────────────────
 
-# CSS-класс, который Django admin вешает на fieldset с инлайном.
-# Используется как якорь для JS-скрипта.
-_OPTIONS_INLINE_CSS_CLASS = 'question-options-inline'
-
-
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    """
-    QuestionOptionInline всегда объявлен статически — нет get_inlines.
-    JS (подключённый через Media) скрывает/показывает блок инлайна
-    в зависимости от выбранного question_type, не трогая серверную логику.
-    """
     list_display    = [
         'short_text', 'test', 'type_badge', 'difficulty_badge',
         'language', 'order', 'options_link',
@@ -184,7 +165,7 @@ class QuestionAdmin(admin.ModelAdmin):
     list_filter     = ['question_type', 'difficulty', 'language', 'test']
     search_fields   = ['text', 'test__title']
     ordering        = ['test', 'order']
-    inlines         = [QuestionOptionInline]   # ← статически, всегда
+    inlines         = [QuestionOptionInline]
     readonly_fields = ['created_at', 'options_link']
     fieldsets = [
         ('Основное',   {'fields': ['test', 'text', 'question_type', 'difficulty', 'order']}),
@@ -192,12 +173,8 @@ class QuestionAdmin(admin.ModelAdmin):
         ('Системное',  {'fields': ['created_at', 'options_link'], 'classes': ['collapse']}),
     ]
 
-    # ── JS: управление видимостью инлайна ──────────────────────────────────
-
     class Media:
         js = ('admin/js/question_options_toggle.js',)
-
-    # ── Валидация после сохранения ─────────────────────────────────────────
 
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
@@ -218,7 +195,6 @@ class QuestionAdmin(admin.ModelAdmin):
                     messages.WARNING,
                 )
         else:
-            # TEXT / CODE — варианты запрещены, удаляем если есть
             if obj.options.exists():
                 obj.options.all().delete()
                 self.message_user(
@@ -226,8 +202,6 @@ class QuestionAdmin(admin.ModelAdmin):
                     'Варианты ответов удалены — тип вопроса не поддерживает варианты.',
                     messages.WARNING,
                 )
-
-    # ── list columns ───────────────────────────────────────────────────────
 
     def short_text(self, obj):
         return obj.text[:70]
@@ -253,14 +227,14 @@ class QuestionAdmin(admin.ModelAdmin):
     def options_link(self, obj):
         if not obj or not obj.pk:
             return '—'
-        url = reverse('admin:testing_questionoption_changelist') + f'?question__id__exact={obj.pk}'
+        url   = reverse('admin:testing_questionoption_changelist') + f'?question__id__exact={obj.pk}'
         count = obj.options.count()
         return format_html('<a href="{}">Варианты ({})</a>', url, count)
     options_link.short_description = 'Варианты ответов'
 
 
-# # ── QuestionOption ────────────────────────────────────────────────────────────
-#
+# ── QuestionOption ────────────────────────────────────────────────────────────
+
 @admin.register(QuestionOption)
 class QuestionOptionAdmin(admin.ModelAdmin):
     list_display  = ['text_short', 'question', 'correct_badge', 'order']
@@ -282,11 +256,11 @@ class QuestionOptionAdmin(admin.ModelAdmin):
 @admin.register(TestSession)
 class TestSessionAdmin(admin.ModelAdmin):
     list_display    = [
-        'key', 'test', 'status_badge', 'valid_indicator',
+        'session_label', 'test', 'status_badge', 'valid_indicator',
         'expires_display', 'attempts_display', 'created_at',
     ]
     list_filter     = ['status', 'is_active', 'test']
-    search_fields   = ['key', 'test__title']
+    search_fields   = ['key', 'title', 'test__title']
     ordering        = ['-created_at']
     inlines         = [AttemptInline]
     actions         = ['force_expire']
@@ -295,10 +269,20 @@ class TestSessionAdmin(admin.ModelAdmin):
         'valid_indicator', 'expires_display', 'attempts_display',
     ]
     fieldsets = [
-        ('Сессия',  {'fields': ['id', 'key', 'test', 'status', 'is_active']}),
-        ('Время',   {'fields': ['created_at', 'expires_at', 'valid_indicator', 'expires_display']}),
+        ('Сессия', {'fields': ['id', 'key', 'test', 'title', 'status', 'is_active']}),
+        ('Время',  {'fields': ['created_at', 'expires_at', 'valid_indicator', 'expires_display']}),
         ('Попытки', {'fields': ['attempts_display']}),
     ]
+
+    def session_label(self, obj):
+        """Show title if set, otherwise truncated key."""
+        if obj.title:
+            return format_html(
+                '{} <span style="color:#999;font-size:11px;">({})</span>',
+                obj.title, obj.key[:12] + '…',
+            )
+        return obj.key
+    session_label.short_description = 'Сессия'
 
     def status_badge(self, obj):
         color = STATUS_COLORS.get(obj.status, '#95a5a6')
@@ -354,7 +338,7 @@ class StudentAttemptAdmin(admin.ModelAdmin):
         'score_display', 'started_at', 'finished_at', 'duration_display',
     ]
     list_filter     = ['status', 'session__test', 'started_at']
-    search_fields   = ['student_name', 'session__test__title', 'session__key']
+    search_fields   = ['student_name', 'session__test__title', 'session__key', 'session__title']
     ordering        = ['-started_at']
     inlines         = [AnswerInline]
     readonly_fields = [
@@ -406,11 +390,11 @@ class StudentAttemptAdmin(admin.ModelAdmin):
 
 @admin.register(Answer)
 class AnswerAdmin(admin.ModelAdmin):
-    list_display  = ['student_name', 'question_short', 'answer_preview',
-                     'correctness_badge', 'answered_at']
-    list_filter   = ['is_correct', 'question__question_type']
-    search_fields = ['attempt__student_name', 'question__text']
-    ordering      = ['-answered_at']
+    list_display    = ['student_name', 'question_short', 'answer_preview',
+                       'correctness_badge', 'answered_at']
+    list_filter     = ['is_correct', 'question__question_type']
+    search_fields   = ['attempt__student_name', 'question__text']
+    ordering        = ['-answered_at']
     readonly_fields = [f.name for f in Answer._meta.fields]
 
     def has_add_permission(self, request):

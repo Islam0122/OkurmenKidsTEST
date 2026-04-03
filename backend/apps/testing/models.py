@@ -56,8 +56,8 @@ class Test(models.Model):
     updated_at  = models.DateTimeField(auto_now=True, verbose_name='Обновлён')
 
     class Meta:
-        ordering         = ['title']
-        verbose_name     = 'Тест'
+        ordering            = ['title']
+        verbose_name        = 'Тест'
         verbose_name_plural = 'Тесты'
 
     def __str__(self):
@@ -95,10 +95,10 @@ class Question(models.Model):
     created_at    = models.DateTimeField(auto_now_add=True, verbose_name='Создан')
 
     class Meta:
-        ordering         = ['test', 'order', 'created_at']
-        verbose_name     = 'Вопрос'
+        ordering            = ['test', 'order', 'created_at']
+        verbose_name        = 'Вопрос'
         verbose_name_plural = 'Вопросы'
-        indexes          = [models.Index(fields=['test', 'order'])]
+        indexes             = [models.Index(fields=['test', 'order'])]
 
     def __str__(self):
         return f'[{self.test.title}] {self.text[:60]}'
@@ -106,8 +106,6 @@ class Question(models.Model):
     def clean(self):
         if self.question_type == QuestionType.CODE and not self.language:
             raise ValidationError({'language': 'Для code-вопроса обязателен язык.'})
-        if self.question_type in (QuestionType.TEXT, QuestionType.CODE) and self.language and self.question_type == QuestionType.TEXT:
-            pass  # text can have no language
 
 
 # ─── QuestionOption ───────────────────────────────────────────────────────────
@@ -123,8 +121,8 @@ class QuestionOption(models.Model):
     order      = models.PositiveSmallIntegerField(default=0, verbose_name='Порядок')
 
     class Meta:
-        ordering         = ['order']
-        verbose_name     = 'Вариант ответа'
+        ordering            = ['order']
+        verbose_name        = 'Вариант ответа'
         verbose_name_plural = 'Варианты ответов'
 
     def __str__(self):
@@ -149,7 +147,10 @@ class TestSession(models.Model):
     test       = models.ForeignKey(
         Test, on_delete=models.CASCADE, related_name='sessions', verbose_name='Тест'
     )
-    title=
+    title      = models.CharField(
+        max_length=255, blank=True, verbose_name='Название сессии',
+        help_text='Необязательное название для удобства (напр. "Группа A, 01.04.2026")'
+    )
     key        = models.CharField(
         max_length=64, unique=True, default=_generate_key,
         verbose_name='Ключ сессии', db_index=True
@@ -163,12 +164,13 @@ class TestSession(models.Model):
     is_active  = models.BooleanField(default=True, verbose_name='Активна')
 
     class Meta:
-        ordering         = ['-created_at']
-        verbose_name     = 'Сессия'
+        ordering            = ['-created_at']
+        verbose_name        = 'Сессия'
         verbose_name_plural = 'Сессии'
 
     def __str__(self):
-        return f'{self.test.title} / {self.key}'
+        label = self.title or self.key
+        return f'{self.test.title} / {label}'
 
     @property
     def is_valid(self):
@@ -180,7 +182,7 @@ class TestSession(models.Model):
 
     def deactivate(self):
         self.is_active = False
-        self.status = SessionStatus.FINISHED
+        self.status    = SessionStatus.FINISHED
         self.save(update_fields=['is_active', 'status'])
 
 
@@ -202,9 +204,9 @@ class StudentAttempt(models.Model):
     )
 
     class Meta:
-        ordering         = ['-started_at']
-        unique_together  = [('session', 'student_name')]
-        verbose_name     = 'Попытка'
+        ordering            = ['-started_at']
+        unique_together     = [('session', 'student_name')]
+        verbose_name        = 'Попытка'
         verbose_name_plural = 'Попытки'
 
     def __str__(self):
@@ -224,7 +226,7 @@ class StudentAttempt(models.Model):
         if self.is_finished:
             raise ValidationError('Attempt already finished.')
         self.finished_at = timezone.now()
-        self.status = AttemptStatus.FINISHED
+        self.status      = AttemptStatus.FINISHED
         self._recalculate_score()
         self.save(update_fields=['finished_at', 'status', 'score'])
 
@@ -233,7 +235,7 @@ class StudentAttempt(models.Model):
         if not answers.exists():
             self.score = 0.0
             return
-        correct = answers.filter(is_correct=True).count()
+        correct    = answers.filter(is_correct=True).count()
         self.score = round((correct / answers.count()) * 100, 2)
 
 
@@ -255,9 +257,9 @@ class Answer(models.Model):
     answered_at      = models.DateTimeField(auto_now_add=True, verbose_name='Отвечено')
 
     class Meta:
-        ordering         = ['answered_at']
-        unique_together  = [('attempt', 'question')]
-        verbose_name     = 'Ответ'
+        ordering            = ['answered_at']
+        unique_together     = [('attempt', 'question')]
+        verbose_name        = 'Ответ'
         verbose_name_plural = 'Ответы'
 
     def __str__(self):

@@ -23,6 +23,7 @@ def _models():
 class SessionCreateResult:
     session_id: str
     key: str
+    title: str
     test_title: str
     expires_at: str
     status: str
@@ -59,18 +60,19 @@ class FinishResult:
 class SessionService:
 
     @staticmethod
-    def create_session(test_id: str) -> SessionCreateResult:
+    def create_session(test_id: str, title: str = '') -> SessionCreateResult:
         Test, TestSession, *_ = _models()
         try:
             test = Test.objects.get(pk=test_id, is_active=True)
         except Test.DoesNotExist:
             raise ValidationError(f'Test {test_id} not found or inactive.')
 
-        session = TestSession.objects.create(test=test)
-        logger.info('Session %s created for test "%s"', session.key, test.title)
+        session = TestSession.objects.create(test=test, title=title.strip())
+        logger.info('Session %s created for test "%s" title="%s"', session.key, test.title, session.title)
         return SessionCreateResult(
             session_id=str(session.id),
             key=session.key,
+            title=session.title,
             test_title=test.title,
             expires_at=session.expires_at.isoformat(),
             status=session.status,
@@ -100,15 +102,16 @@ class SessionService:
     @staticmethod
     def get_session_data(key: str) -> dict:
         """FastAPI-facing: minimal JSON payload for a session."""
-        session = SessionService.validate_session(key)
+        session   = SessionService.validate_session(key)
         questions = _serialize_questions(session.test)
         return {
-            'session_id':   str(session.id),
-            'test_id':      str(session.test.id),
-            'test_title':   session.test.title,
-            'status':       session.status,
-            'expires_at':   session.expires_at.isoformat(),
-            'questions':    questions,
+            'session_id': str(session.id),
+            'test_id':    str(session.test.id),
+            'test_title': session.test.title,
+            'title':      session.title,
+            'status':     session.status,
+            'expires_at': session.expires_at.isoformat(),
+            'questions':  questions,
         }
 
 
@@ -118,7 +121,7 @@ class AttemptService:
 
     @staticmethod
     def start_attempt(key: str, student_name: str) -> AttemptStartResult:
-        _, _, StudentAttempt, _, _, _, AttemptStatus, _ = _models()
+        _, _, StudentAttempt, _, _, _, AttemptStatus, SessionStatus = _models()
         student_name = student_name.strip()
         if not student_name:
             raise ValidationError('student_name is required.')
@@ -130,12 +133,8 @@ class AttemptService:
                 raise ValidationError(
                     f'Student "{student_name}" already has an attempt for this session.'
                 )
-            attempt = StudentAttempt.objects.create(
-                session=session, student_name=student_name
-            )
-            # Mark session as running on first attempt
-            if session.status == 'created':
-                from .models import SessionStatus
+            attempt = StudentAttempt.objects.create(session=session, student_name=student_name)
+            if session.status == SessionStatus.CREATED:
                 session.status = SessionStatus.RUNNING
                 session.save(update_fields=['status'])
 
@@ -216,6 +215,7 @@ class AttemptService:
             'attempt_id':       str(attempt.id),
             'student_name':     attempt.student_name,
             'test_title':       attempt.session.test.title,
+            'session_title':    attempt.session.title,
             'score':            attempt.score,
             'status':           attempt.status,
             'started_at':       attempt.started_at.isoformat(),
@@ -297,15 +297,10 @@ class SyncService:
 
     @staticmethod
     def prepare_data_for_fastapi(session_key: str) -> dict:
-        """Full session payload for FastAPI engine bootstrap."""
         return SessionService.get_session_data(session_key)
 
     @staticmethod
     def push_attempt_update(attempt_id: str, payload: dict) -> dict:
-        """
-        Called by FastAPI to sync answer updates back to Django.
-        payload: {question_id, answer_text, selected_options}
-        """
         return AnswerService.submit_answer(
             attempt_id=attempt_id,
             question_id=payload.get('question_id', ''),
@@ -315,12 +310,10 @@ class SyncService:
 
     @staticmethod
     def sync_attempt_results(attempt_id: str) -> dict:
-        """FastAPI calls this to get current attempt state."""
         return AttemptService.get_attempt_result(attempt_id)
 
     @staticmethod
     def finalize_results(attempt_id: str) -> dict:
-        """FastAPI calls this to finish an attempt."""
         result = AttemptService.finish_attempt(attempt_id)
         return result.__dict__
 
@@ -328,7 +321,7 @@ class SyncService:
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _serialize_questions(test) -> list:
-    from .models import Question
+    from ..models import Question
     qs = (
         Question.objects
         .filter(test=test)
@@ -357,10 +350,10 @@ def _serialize_questions(test) -> list:
     return result
 
 
-# ─── Public aliases (backwards compat with existing api_views.py) ─────────────
+# ─── Public aliases (backwards compat) ───────────────────────────────────────
 
-def create_session(test_id: str) -> SessionCreateResult:
-    return SessionService.create_session(test_id)
+def create_session(test_id: str, title: str = '') -> SessionCreateResult:
+    return SessionService.create_session(test_id, title)
 
 
 def get_valid_session(key: str):

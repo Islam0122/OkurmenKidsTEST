@@ -76,26 +76,29 @@ class TestWriteSerializer(serializers.ModelSerializer):
 
 class SessionCreateSerializer(serializers.Serializer):
     test_id = serializers.UUIDField()
+    title   = serializers.CharField(max_length=255, allow_blank=True, default='',
+                                    help_text='Необязательное название сессии')
 
 
 class SessionCreateResponseSerializer(serializers.Serializer):
     session_id = serializers.CharField()
     key        = serializers.CharField()
+    title      = serializers.CharField()
     test_title = serializers.CharField()
     expires_at = serializers.CharField()
     status     = serializers.CharField()
 
 
 class TestSessionSerializer(serializers.ModelSerializer):
-    test_title          = serializers.CharField(source='test.title', read_only=True)
-    is_valid            = serializers.BooleanField(read_only=True)
-    attempt_count       = serializers.SerializerMethodField()
+    test_title           = serializers.CharField(source='test.title', read_only=True)
+    is_valid             = serializers.BooleanField(read_only=True)
+    attempt_count        = serializers.SerializerMethodField()
     active_attempt_count = serializers.SerializerMethodField()
 
     class Meta:
         model  = TestSession
         fields = [
-            'id', 'key', 'test_title', 'status', 'is_active', 'is_valid',
+            'id', 'key', 'title', 'test_title', 'status', 'is_active', 'is_valid',
             'created_at', 'expires_at', 'attempt_count', 'active_attempt_count',
         ]
 
@@ -152,18 +155,18 @@ class FinishResultSerializer(serializers.Serializer):
 class StudentAttemptSerializer(serializers.ModelSerializer):
     test_title       = serializers.CharField(source='session.test.title', read_only=True)
     session_key      = serializers.CharField(source='session.key', read_only=True)
+    session_title    = serializers.CharField(source='session.title', read_only=True)
     is_finished      = serializers.BooleanField(read_only=True)
     duration_seconds = serializers.FloatField(read_only=True)
 
     class Meta:
         model  = StudentAttempt
         fields = [
-            'id', 'test_title', 'session_key', 'student_name', 'status',
+            'id', 'test_title', 'session_key', 'session_title', 'student_name', 'status',
             'started_at', 'finished_at', 'is_finished', 'score', 'duration_seconds',
         ]
 
 
-# ─── Sync (FastAPI) ───────────────────────────────────────────────────────────
 
 class SyncAnswerSerializer(serializers.Serializer):
     question_id      = serializers.UUIDField()
