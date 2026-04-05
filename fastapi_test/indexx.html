@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OkurmenKids — Тестирование</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+/* ── Design tokens ─────────────────────────────────────────────────────── */
+:root {
+  --bg:            #0c0f1a;
+  --surface:       #141824;
+  --surface-2:     #1c2235;
+  --surface-3:     #232942;
+  --border:        rgba(255,255,255,.07);
+  --border-active: rgba(99,179,237,.35);
+
+  --text:          #edf2ff;
+  --text-2:        #8892b0;
+  --text-3:        #4a5578;
+
+  --accent:        #63b3ed;
+  --accent-glow:   rgba(99,179,237,.18);
+  --accent-2:      #9f7aea;
+  --success:       #68d391;
+  --success-glow:  rgba(104,211,145,.15);
+  --error:         #fc8181;
+  --error-glow:    rgba(252,129,129,.15);
+  --warning:       #f6ad55;
+
+  --radius:        14px;
+  --radius-sm:     8px;
+  --radius-lg:     20px;
+
+  --font-display:  'Syne', sans-serif;
+  --font-body:     'DM Sans', sans-serif;
+  --font-mono:     'DM Mono', monospace;
+
+  --transition:    .22s cubic-bezier(.4,0,.2,1);
+}
+
+/* ── Reset & base ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; -webkit-font-smoothing: antialiased; }
+
+body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Ambient background ────────────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% -10%, rgba(99,179,237,.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 110%, rgba(159,122,234,.07) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* ── Layout ────────────────────────────────────────────────────────────── */
+#app {
+  position: relative; z-index: 1;
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 40px 20px 80px;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────── */
+.header {
+  width: 100%; max-width: 680px;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 48px;
+}
+.logo {
+  font-family: var(--font-display);
+  font-size: 18px; font-weight: 800;
+  letter-spacing: -.02em;
+  color: var(--text);
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .6; transform: scale(.8); }
+}
+.ws-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 500; color: var(--text-2);
+  font-family: var(--font-mono);
+}
+.ws-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text-3);
+  transition: background var(--transition);
+}
+.ws-dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
+.ws-dot.connecting { background: var(--warning); animation: blink .6s infinite; }
+.ws-dot.error { background: var(--error); }
+@keyframes blink { 50% { opacity: .3; } }
+
+/* ── Card ──────────────────────────────────────────────────────────────── */
+.card {
+  width: 100%; max-width: 680px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(99,179,237,.3), transparent);
+}
+
+/* ── Login screen ──────────────────────────────────────────────────────── */
+#screen-login .card-title {
+  font-family: var(--font-display);
+  font-size: 28px; font-weight: 800;
+  letter-spacing: -.03em;
+  margin-bottom: 8px;
+}
+#screen-login .card-subtitle {
+  color: var(--text-2); font-size: 14px;
+  margin-bottom: 36px;
+}
+.form-group { margin-bottom: 20px; }
+.form-label {
+  display: block;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text-2); margin-bottom: 8px;
+}
+.form-input {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 13px 16px;
+  color: var(--text);
+  font-family: var(--font-body); font-size: 15px;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.form-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.form-input::placeholder { color: var(--text-3); }
+
+.key-input {
+  font-family: var(--font-mono);
+  font-size: 14px; letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+/* ── Button ────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 28px;
+  border: none; border-radius: var(--radius-sm);
+  font-family: var(--font-display); font-size: 15px; font-weight: 700;
+  cursor: pointer; outline: none;
+  transition: all var(--transition);
+  letter-spacing: -.01em;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #4299e1);
+  color: #0c0f1a;
+  width: 100%;
+}
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(99,179,237,.3);
+}
+.btn-primary:active:not(:disabled) { transform: translateY(0); }
+.btn-primary:disabled {
+  opacity: .4; cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  padding: 10px 20px; font-size: 13px;
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface-3);
+  color: var(--text);
+  border-color: var(--border-active);
+}
+
+.btn-finish {
+  background: linear-gradient(135deg, var(--success), #48bb78);
+  color: #0c0f1a;
+  width: 100%; margin-top: 12px;
+}
+.btn-finish:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px var(--success-glow);
+}
+
+/* ── Spinner ────────────────────────────────────────────────────────────── */
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(12,15,26,.3);
+  border-top-color: #0c0f1a;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Loading screen ────────────────────────────────────────────────────── */
+#screen-loading {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 20px;
+}
+.loading-ring {
+  width: 52px; height: 52px;
+  border: 3px solid var(--surface-3);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .9s linear infinite;
+}
+.loading-text {
+  font-family: var(--font-mono); font-size: 13px;
+  color: var(--text-2); letter-spacing: .03em;
+}
+.loading-sub {
+  font-size: 12px; color: var(--text-3);
+  text-align: center; margin-top: -12px;
+}
+
+/* ── Exam screen ────────────────────────────────────────────────────────── */
+.exam-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px; flex-wrap: wrap; gap: 12px;
+}
+.test-title {
+  font-family: var(--font-display); font-size: 16px; font-weight: 700;
+  color: var(--text);
+}
+.session-badge {
+  font-size: 11px; font-weight: 600;
+  font-family: var(--font-mono); letter-spacing: .05em;
+  padding: 4px 10px; border-radius: 20px;
+}
+.badge-exam     { background: rgba(252,129,129,.12); color: var(--error); border: 1px solid rgba(252,129,129,.2); }
+.badge-training { background: rgba(159,122,234,.12); color: var(--accent-2); border: 1px solid rgba(159,122,234,.2); }
+
+/* ── Progress bar ───────────────────────────────────────────────────────── */
+.progress-wrap {
+  margin-bottom: 8px;
+}
+.progress-info {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--text-2); font-family: var(--font-mono);
+  margin-bottom: 8px;
+}
+.progress-bar-bg {
+  height: 4px; background: var(--surface-3);
+  border-radius: 2px; overflow: hidden; margin-bottom: 24px;
+}
+.progress-bar-fill {
+  height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  border-radius: 2px;
+  transition: width .4s cubic-bezier(.4,0,.2,1);
+}
+
+/* ── Question card ──────────────────────────────────────────────────────── */
+.q-number {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--accent); letter-spacing: .08em; font-weight: 500;
+  margin-bottom: 12px;
+}
+.q-difficulty {
+  display: inline-block;
+  font-size: 10px; font-weight: 700; letter-spacing: .06em;
+  padding: 2px 8px; border-radius: 10px;
+  text-transform: uppercase; margin-left: 10px;
+}
+.diff-easy   { background: rgba(104,211,145,.12); color: var(--success); }
+.diff-medium { background: rgba(246,173,85,.12);  color: var(--warning); }
+.diff-hard   { background: rgba(252,129,129,.12); color: var(--error);   }
+
+.q-text {
+  font-size: 18px; font-weight: 500;
+  line-height: 1.55; color: var(--text);
+  margin-bottom: 24px;
+}
+
+.q-lang-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--accent-2);
+  background: rgba(159,122,234,.1); border: 1px solid rgba(159,122,234,.2);
+  padding: 3px 10px; border-radius: 12px;
+  margin-bottom: 14px;
+}
+
+/* ── Options ────────────────────────────────────────────────────────────── */
+.options-list {
+  display: flex; flex-direction: column; gap: 10px;
+  margin-bottom: 24px;
+}
+.option-item {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 15px 18px;
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+  user-select: none;
+}
+.option-item:hover {
+  border-color: var(--border-active);
+  background: var(--surface-3);
+}
+.option-item.selected {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+.option-item.correct {
+  border-color: var(--success);
+  background: var(--success-glow);
+}
+.option-item.incorrect {
+  border-color: var(--error);
+  background: var(--error-glow);
+}
+.option-item.disabled {
+  cursor: default; pointer-events: none;
+}
+
+.option-marker {
+  width: 22px; height: 22px; flex-shrink: 0;
+  border: 2px solid var(--border-active);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+  color: var(--text-3);
+  transition: all var(--transition);
+  margin-top: 1px;
+}
+.option-item.selected .option-marker {
+  background: var(--accent); border-color: var(--accent); color: #0c0f1a;
+}
+.option-item.correct .option-marker {
+  background: var(--success); border-color: var(--success); color: #0c0f1a;
+}
+.option-item.incorrect .option-marker {
+  background: var(--error); border-color: var(--error); color: #fff;
+}
+/* Square marker for multiple-choice */
+.option-marker.square { border-radius: 5px; }
+
+.option-text {
+  font-size: 14px; line-height: 1.5; color: var(--text);
+  flex: 1;
+}
+
+/* ── Text / Code answer ─────────────────────────────────────────────────── */
+.answer-textarea {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  color: var(--text);
+  font-family: var(--font-body); font-size: 14px;
+  line-height: 1.6; resize: vertical; min-height: 120px;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  margin-bottom: 24px;
+}
+.answer-textarea.code-area {
+  font-family: var(--font-mono); font-size: 13px;
+  min-height: 180px; tab-size: 2;
+}
+.answer-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* ── Answer feedback ────────────────────────────────────────────────────── */
+.answer-feedback {
+  display: none; align-items: center; gap: 10px;
+  padding: 12px 16px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500;
+  margin-bottom: 20px;
+  animation: fadeIn .3s ease;
+}
+.answer-feedback.show { display: flex; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } }
+
+.feedback-correct  { background: var(--success-glow); border: 1px solid rgba(104,211,145,.25); color: var(--success); }
+.feedback-incorrect { background: var(--error-glow);   border: 1px solid rgba(252,129,129,.25); color: var(--error);   }
+.feedback-pending  { background: rgba(159,122,234,.1); border: 1px solid rgba(159,122,234,.2); color: var(--accent-2); }
+
+.feedback-icon { font-size: 18px; }
+
+/* ── Navigation ─────────────────────────────────────────────────────────── */
+.q-actions {
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.btn-submit {
+  flex: 1;
+  background: linear-gradient(135deg, var(--accent), #4299e1);
+  color: #0c0f1a;
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  padding: 13px 24px;
+  border: none; border-radius: var(--radius-sm);
+  cursor: pointer; outline: none;
+  transition: all var(--transition);
+}
+.btn-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(99,179,237,.3);
+}
+.btn-submit:disabled { opacity: .35; cursor: not-allowed; }
+
+/* ── Score board ────────────────────────────────────────────────────────── */
+#screen-result .card {
+  text-align: center;
+}
+.result-icon {
+  font-size: 56px; margin-bottom: 16px;
+  filter: drop-shadow(0 0 20px currentColor);
+  animation: popIn .5s cubic-bezier(.175,.885,.32,1.275);
+}
+@keyframes popIn {
+  from { transform: scale(.4); opacity: 0; }
+  to   { transform: scale(1);  opacity: 1; }
+}
+.result-title {
+  font-family: var(--font-display); font-size: 30px; font-weight: 800;
+  letter-spacing: -.03em; margin-bottom: 6px;
+}
+.result-subtitle { color: var(--text-2); font-size: 14px; margin-bottom: 36px; }
+
+.score-ring-wrap {
+  position: relative; width: 160px; height: 160px;
+  margin: 0 auto 32px;
+}
+.score-ring {
+  transform: rotate(-90deg);
+  width: 160px; height: 160px;
+}
+.score-ring-bg   { fill: none; stroke: var(--surface-3); stroke-width: 10; }
+.score-ring-fill {
+  fill: none; stroke-width: 10;
+  stroke-linecap: round;
+  stroke-dasharray: 408;
+  stroke-dashoffset: 408;
+  transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1) .3s;
+}
+.score-ring-fill.green  { stroke: var(--success); }
+.score-ring-fill.yellow { stroke: var(--warning); }
+.score-ring-fill.red    { stroke: var(--error); }
+
+.score-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.score-num {
+  font-family: var(--font-display); font-size: 36px; font-weight: 800;
+  line-height: 1;
+}
+.score-label { font-size: 12px; color: var(--text-2); font-family: var(--font-mono); }
+
+.stats-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 12px; margin-bottom: 32px;
+}
+.stat-box {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px 12px;
+}
+.stat-num {
+  font-family: var(--font-display); font-size: 22px; font-weight: 800;
+  margin-bottom: 4px;
+}
+.stat-lbl {
+  font-size: 11px; font-weight: 600; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--text-2);
+}
+
+.result-actions { display: flex; gap: 10px; }
+
+/* ── Error screen ───────────────────────────────────────────────────────── */
+#screen-error {
+  text-align: center;
+}
+.error-icon { font-size: 48px; margin-bottom: 16px; }
+.error-title {
+  font-family: var(--font-display); font-size: 22px; font-weight: 700;
+  color: var(--error); margin-bottom: 8px;
+}
+.error-msg { color: var(--text-2); font-size: 14px; margin-bottom: 28px; }
+.error-code {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--text-3); letter-spacing: .05em;
+  margin-bottom: 28px;
+}
+
+/* ── Screen transitions ─────────────────────────────────────────────────── */
+.screen { display: none; width: 100%; animation: screenIn .35s ease; }
+.screen.active { display: block; }
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Toast notifications ────────────────────────────────────────────────── */
+#toast-container {
+  position: fixed; bottom: 28px; right: 28px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.toast {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 24px rgba(0,0,0,.4);
+  animation: toastIn .3s ease;
+  max-width: 320px;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(20px); }
+}
+.toast.success { border-color: rgba(104,211,145,.25); }
+.toast.error   { border-color: rgba(252,129,129,.25); }
+.toast.info    { border-color: rgba(99,179,237,.25); }
+.toast-icon { font-size: 16px; }
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 520px) {
+  .card { padding: 28px 22px; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  #app { padding: 24px 14px 60px; }
+  .header { margin-bottom: 28px; }
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Header -->
+  <header class="header">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      OkurmenKids
+    </div>
+    <div class="ws-status">
+      <div class="ws-dot" id="ws-dot"></div>
+      <span id="ws-label">Отключено</span>
+    </div>
+  </header>
+
+  <!-- ── Screen: Login ──────────────────────────────────────────────── -->
+  <div class="screen active" id="screen-login">
+    <div class="card">
+      <h1 class="card-title">Начать тест</h1>
+      <p class="card-subtitle">Введите ключ сессии и ваше имя для прохождения теста</p>
+
+      <div class="form-group">
+        <label class="form-label" for="inp-key">Ключ сессии</label>
+        <input class="form-input key-input" id="inp-key"
+               type="text" autocomplete="off" spellcheck="false"
+               placeholder="xxxx-xxxx-xxxx">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="inp-name">Ваше имя</label>
+        <input class="form-input" id="inp-name"
+               type="text" autocomplete="name"
+               placeholder="Иван Иванов">
+      </div>
+
+      <button class="btn btn-primary" id="btn-start" onclick="startExam()">
+        Начать тест
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Screen: Loading ────────────────────────────────────────────── -->
+  <div class="screen" id="screen-loading">
+    <div class="card" style="display:flex;flex-direction:column;align-items:center;padding:60px 40px;gap:20px;">
+      <div class="loading-ring"></div>
+      <div class="loading-text" id="loading-text">Подключение…</div>
+      <div class="loading-sub" id="loading-sub"></div>
+    </div>
+  </div>
+
+  <!-- ── Screen: Exam ───────────────────────────────────────────────── -->
+  <div class="screen" id="screen-exam">
+    <div class="card">
+      <!-- meta row -->
+      <div class="exam-meta">
+        <div class="test-title" id="exam-test-title">—</div>
+        <span class="session-badge" id="exam-session-badge">exam</span>
+      </div>
+
+      <!-- progress -->
+      <div class="progress-wrap">
+        <div class="progress-info">
+          <span id="prog-label">Вопрос 1 из 1</span>
+          <span id="prog-score">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="prog-bar" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- question -->
+      <div id="q-number" class="q-number">ВОПРОС 01</div>
+      <div id="q-lang-tag" class="q-lang-tag" style="display:none">
+        <span>⌨</span><span id="q-lang-text"></span>
+      </div>
+      <div id="q-text" class="q-text">—</div>
+
+      <!-- options / textarea -->
+      <div id="q-body"></div>
+
+      <!-- feedback -->
+      <div class="answer-feedback" id="answer-feedback">
+        <span class="feedback-icon" id="fb-icon"></span>
+        <span id="fb-text"></span>
+      </div>
+
+      <!-- actions -->
+      <div class="q-actions">
+        <button class="btn-submit" id="btn-submit" onclick="submitAnswer()">
+          Подтвердить ответ
+        </button>
+        <button class="btn btn-secondary" id="btn-finish-early" onclick="finishExam()" style="display:none">
+          Завершить тест
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Screen: Result ─────────────────────────────────────────────── -->
+  <div class="screen" id="screen-result">
+    <div class="card">
+      <div class="result-icon" id="result-icon">🎉</div>
+      <div class="result-title" id="result-title">Тест завершён!</div>
+      <div class="result-subtitle" id="result-subtitle"></div>
+
+      <div class="score-ring-wrap">
+        <svg class="score-ring" viewBox="0 0 160 160">
+          <circle class="score-ring-bg" cx="80" cy="80" r="65"/>
+          <circle class="score-ring-fill" id="score-ring-fill" cx="80" cy="80" r="65"/>
+        </svg>
+        <div class="score-center">
+          <div class="score-num" id="result-score">0%</div>
+          <div class="score-label">SCORE</div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-num" id="stat-total">—</div>
+          <div class="stat-lbl">Вопросов</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" style="color:var(--success)" id="stat-correct">—</div>
+          <div class="stat-lbl">Правильно</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="stat-duration">—</div>
+          <div class="stat-lbl">Время</div>
+        </div>
+      </div>
+
+      <div id="pending-note" style="display:none;margin-bottom:20px;padding:12px 16px;background:rgba(159,122,234,.1);border:1px solid rgba(159,122,234,.2);border-radius:var(--radius-sm);font-size:13px;color:var(--accent-2);text-align:left;">
+        ⏳ <strong id="pending-count">0</strong> ответов ожидают проверки (текст/код). Итоговый балл будет обновлён после проверки преподавателем.
+      </div>
+
+      <div class="result-actions">
+        <button class="btn btn-secondary" style="flex:1" onclick="resetApp()">
+          ← Новый тест
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Screen: Error ──────────────────────────────────────────────── -->
+  <div class="screen" id="screen-error">
+    <div class="card">
+      <div class="error-icon">⚠️</div>
+      <div class="error-title" id="err-title">Ошибка подключения</div>
+      <div class="error-msg"  id="err-msg">Неизвестная ошибка.</div>
+      <div class="error-code" id="err-code"></div>
+      <button class="btn btn-primary" onclick="resetApp()">← Попробовать снова</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     JavaScript — WebSocket client + UI state machine
+═══════════════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ── Config ────────────────────────────────────────────────────────────── */
+// Auto-detect WS host from current location; override for dev.
+const WS_URL = (() => {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host  = '127.0.0.1:8000'; // ← без' пробела
+  return `${proto}//${host}/ws/exam`;
+})();
+const ws1 = new WebSocket("ws://127.0.0.1:8000/ws/exam");
+
+ws1.onopen = () => console.log("OPEN ✅");
+ws1.onerror = (e) => console.log("ERROR ❌", e);
+ws1.onclose = (e) => console.log("CLOSE", e);
+
+/* ── State ─────────────────────────────────────────────────────────────── */
+let ws            = null;
+let currentQ      = null;    // current question object from server
+let totalQ        = 0;
+let answeredCount = 0;
+let sessionType   = 'exam';
+let submitLocked  = false;   // prevent double-submit
+
+/* ── Screen manager ─────────────────────────────────────────────────────── */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ── WS status indicator ────────────────────────────────────────────────── */
+function setWsStatus(state) {
+  const dot   = document.getElementById('ws-dot');
+  const label = document.getElementById('ws-label');
+  dot.className = 'ws-dot ' + state;
+  const labels = { connected: 'Подключено', connecting: 'Подключение…', error: 'Ошибка', '': 'Отключено' };
+  label.textContent = labels[state] || 'Отключено';
+}
+
+/* ── Toast ──────────────────────────────────────────────────────────────── */
+function toast(msg, type = 'info', duration = 3500) {
+  const icons = { success: '✓', error: '✕', info: 'ℹ' };
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span class="toast-icon">${icons[type]||'ℹ'}</span><span>${msg}</span>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(20px)';
+    el.style.transition = '.3s'; setTimeout(() => el.remove(), 300); }, duration);
+}
+
+/* ── WebSocket connection ───────────────────────────────────────────────── */
+function connectWS() {
+  return new Promise((resolve, reject) => {
+    setWsStatus('connecting');
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => {
+      setWsStatus('connected');
+      resolve(ws);
+    };
+
+    ws.onerror = (e) => {
+      setWsStatus('error');
+      reject(new Error('WebSocket connection failed. Is the FastAPI server running?'));
+    };
+
+    ws.onclose = (e) => {
+      setWsStatus('');
+      if (e.code !== 1000 && e.code !== 1001) {
+        // Unexpected close
+        if (document.getElementById('screen-exam').classList.contains('active')) {
+          showError('Соединение разорвано', `Код: ${e.code}. Возможно, сервер недоступен.`, 'WS_CLOSE');
+        }
+      }
+    };
+
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        handleServerMessage(msg);
+      } catch(err) {
+        console.error('JSON parse error:', err);
+      }
+    };
+  });
+}
+
+/* ── Server message handler ─────────────────────────────────────────────── */
+function handleServerMessage(msg) {
+  console.debug('← WS:', msg.type, msg);
+
+  switch (msg.type) {
+
+    case 'connecting':
+      setLoading(msg.message, 'Проверяем ключ сессии…');
+      break;
+
+    case 'session_info':
+      totalQ       = msg.total;
+      sessionType  = msg.session_type;
+      answeredCount = 0;
+      document.getElementById('exam-test-title').textContent = msg.test_title;
+      const badge = document.getElementById('exam-session-badge');
+      badge.textContent = sessionType === 'training' ? 'Тренажёр' : 'Экзамен';
+      badge.className = 'session-badge ' + (sessionType === 'training' ? 'badge-training' : 'badge-exam');
+      setLoading('Загружаем вопросы…', msg.test_title);
+      break;
+
+    case 'question':
+      currentQ = msg;
+      submitLocked = false;
+      renderQuestion(msg);
+      showScreen('screen-exam');
+      break;
+
+    case 'answer_result':
+      handleAnswerResult(msg);
+      break;
+
+    case 'progress':
+      updateProgress(msg);
+      break;
+
+    case 'all_answered':
+      toast('Все вопросы отвечены!', 'success');
+      break;
+
+    case 'finishing':
+      showScreen('screen-loading');
+      setLoading('Подсчёт результатов…', 'Пожалуйста, подождите');
+      break;
+
+    case 'finish_result':
+      renderResult(msg);
+      showScreen('screen-result');
+      break;
+
+    case 'error':
+      showError(
+        msg.code === 'SESSION_EXPIRED' ? 'Сессия истекла'
+        : msg.code === 'ATTEMPT_ERROR' ? 'Ошибка попытки'
+        : msg.code === 'IDLE_TIMEOUT'  ? 'Таймаут бездействия'
+        : 'Ошибка',
+        msg.message, msg.code
+      );
+      break;
+
+    case 'ping_server':
+      // server heartbeat, just acknowledge
+      break;
+
+    case 'pong':
+      break;
+
+    default:
+      console.warn('Unknown message type:', msg.type);
+  }
+}
+
+/* ── Start exam ─────────────────────────────────────────────────────────── */
+async function startExam() {
+  const key  = document.getElementById('inp-key').value.trim();
+  const name = document.getElementById('inp-name').value.trim();
+
+  if (!key)  { toast('Введите ключ сессии', 'error'); return; }
+  if (!name) { toast('Введите ваше имя', 'error'); return; }
+
+  const btn = document.getElementById('btn-start');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Подключение…';
+
+  showScreen('screen-loading');
+  setLoading('Подключение к серверу…', 'WebSocket handshake');
+
+  try {
+    await connectWS();
+  } catch(err) {
+    btn.disabled = false;
+    btn.innerHTML = 'Начать тест';
+    showError('Ошибка подключения', err.message, 'WS_CONNECT');
+    return;
+  }
+
+  // Send start message
+  sendWS({ type: 'start', session_key: key, student_name: name });
+}
+
+/* ── Render question ────────────────────────────────────────────────────── */
+function renderQuestion(q) {
+  const numEl   = document.getElementById('q-number');
+  const textEl  = document.getElementById('q-text');
+  const bodyEl  = document.getElementById('q-body');
+  const feedEl  = document.getElementById('answer-feedback');
+  const langEl  = document.getElementById('q-lang-tag');
+  const submitB = document.getElementById('btn-submit');
+  const finishB = document.getElementById('btn-finish-early');
+
+  // Number + difficulty
+  const diffMap  = { easy: 'Лёгкий', medium: 'Средний', hard: 'Сложный' };
+  numEl.innerHTML = `ВОПРОС ${String(q.question_number).padStart(2,'0')}
+    <span class="q-difficulty diff-${q.difficulty}">${diffMap[q.difficulty]||q.difficulty}</span>`;
+
+  // Language tag (for code questions)
+  if (q.language) {
+    langEl.style.display = 'inline-flex';
+    document.getElementById('q-lang-text').textContent = q.language.toUpperCase();
+  } else {
+    langEl.style.display = 'none';
+  }
+
+  textEl.textContent = q.text;
+
+  // Hide feedback
+  feedEl.className = 'answer-feedback';
+
+  // Build input area
+  bodyEl.innerHTML = '';
+
+  if (q.type === 'single_choice' || q.type === 'multiple_choice') {
+    const isMulti = q.type === 'multiple_choice';
+    const list = document.createElement('div');
+    list.className = 'options-list';
+    list.id = 'options-list';
+
+    (q.options || []).forEach((opt, i) => {
+      const item = document.createElement('div');
+      item.className = 'option-item';
+      item.dataset.id = opt.id;
+      item.onclick = () => toggleOption(item, isMulti);
+
+      const marker = document.createElement('div');
+      marker.className = 'option-marker' + (isMulti ? ' square' : '');
+      marker.textContent = String.fromCharCode(65 + i);
+
+      const text = document.createElement('div');
+      text.className = 'option-text';
+      text.textContent = opt.text;
+
+      item.appendChild(marker);
+      item.appendChild(text);
+      list.appendChild(item);
+    });
+
+    bodyEl.appendChild(list);
+
+  } else {
+    // Text or Code
+    const ta = document.createElement('textarea');
+    ta.className = 'answer-textarea' + (q.type === 'code' ? ' code-area' : '');
+    ta.id        = 'answer-text';
+    ta.placeholder = q.type === 'code'
+      ? `// Напишите ${q.language || 'код'} здесь…`
+      : 'Введите ваш ответ…';
+
+    // Tab key support for code
+    if (q.type === 'code') {
+      ta.addEventListener('keydown', e => {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const s = ta.selectionStart, end = ta.selectionEnd;
+          ta.value = ta.value.substring(0,s) + '  ' + ta.value.substring(end);
+          ta.selectionStart = ta.selectionEnd = s + 2;
+        }
+      });
+    }
+    bodyEl.appendChild(ta);
+  }
+
+  // If already answered, restore state
+  if (q.already_answered && q.previous_answer) {
+    submitLocked = true;
+    submitB.disabled = true;
+    submitB.textContent = '✓ Отвечено';
+    showFeedback(q.previous_answer.is_correct, q.previous_answer.grading_status);
+    // Mark options visually if available
+    if (q.type === 'single_choice' || q.type === 'multiple_choice') {
+      const items = document.querySelectorAll('.option-item');
+      items.forEach(it => it.classList.add('disabled'));
+    }
+  } else {
+    submitB.disabled = false;
+    submitB.textContent = 'Подтвердить ответ';
+  }
+
+  // Show finish button after first answer
+  finishB.style.display = answeredCount > 0 ? '' : 'none';
+
+  // Update progress bar
+  updateProgressBar(q.question_number - 1, totalQ);
+}
+
+/* ── Toggle option selection ────────────────────────────────────────────── */
+function toggleOption(item, isMulti) {
+  if (submitLocked) return;
+  if (!isMulti) {
+    document.querySelectorAll('.option-item').forEach(el => el.classList.remove('selected'));
+  }
+  item.classList.toggle('selected');
+}
+
+/* ── Submit answer ──────────────────────────────────────────────────────── */
+function submitAnswer() {
+  if (!currentQ || submitLocked) return;
+
+  const qtype = currentQ.type;
+  let selectedOptions = [];
+  let answerText = '';
+
+  if (qtype === 'single_choice' || qtype === 'multiple_choice') {
+    selectedOptions = [...document.querySelectorAll('.option-item.selected')]
+      .map(el => el.dataset.id);
+    if (selectedOptions.length === 0) {
+      toast('Выберите вариант ответа', 'error'); return;
+    }
+    if (qtype === 'single_choice' && selectedOptions.length > 1) {
+      toast('Выберите только один вариант', 'error'); return;
+    }
+  } else {
+    const ta = document.getElementById('answer-text');
+    answerText = ta ? ta.value.trim() : '';
+    if (!answerText) { toast('Введите ответ', 'error'); return; }
+  }
+
+  submitLocked = true;
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="border-color:rgba(12,15,26,.2);border-top-color:#0c0f1a;width:15px;height:15px;"></div>';
+
+  sendWS({
+    type:             'answer',
+    question_id:      currentQ.id,
+    selected_options: selectedOptions,
+    answer_text:      answerText,
+  });
+}
+
+/* ── Handle answer result ───────────────────────────────────────────────── */
+function handleAnswerResult(msg) {
+  answeredCount++;
+  const btn = document.getElementById('btn-submit');
+
+  // Disable options
+  document.querySelectorAll('.option-item').forEach(el => {
+    el.classList.add('disabled');
+    if (msg.selected_options && msg.selected_options.includes(el.dataset.id)) {
+      el.classList.add(msg.is_correct ? 'correct' : 'incorrect');
+    }
+  });
+
+  showFeedback(msg.is_correct, msg.grading_status, msg.message);
+
+  btn.disabled = true;
+  btn.textContent = '✓ Отвечено';
+
+  // Show finish button
+  document.getElementById('btn-finish-early').style.display = '';
+}
+
+/* ── Show feedback banner ───────────────────────────────────────────────── */
+function showFeedback(isCorrect, gradingStatus, message) {
+  const el  = document.getElementById('answer-feedback');
+  const ico = document.getElementById('fb-icon');
+  const txt = document.getElementById('fb-text');
+
+  if (isCorrect === null || gradingStatus === 'pending' || gradingStatus === 'ai') {
+    el.className = 'answer-feedback show feedback-pending';
+    ico.textContent = '⏳';
+    txt.textContent = 'Ответ сохранён и ожидает проверки.';
+  } else if (isCorrect) {
+    el.className = 'answer-feedback show feedback-correct';
+    ico.textContent = '✓';
+    txt.textContent = message || 'Правильно!';
+  } else {
+    el.className = 'answer-feedback show feedback-incorrect';
+    ico.textContent = '✕';
+    txt.textContent = message || 'Неправильно.';
+  }
+}
+
+/* ── Progress ───────────────────────────────────────────────────────────── */
+function updateProgress(msg) {
+  updateProgressBar(msg.answered, msg.total);
+  document.getElementById('prog-score').textContent =
+    msg.score_so_far.toFixed(1) + '%';
+}
+
+function updateProgressBar(answered, total) {
+  const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
+  document.getElementById('prog-bar').style.width = pct + '%';
+  document.getElementById('prog-label').textContent =
+    `Вопрос ${Math.min(answered + 1, total)} из ${total}`;
+}
+
+/* ── Finish exam ────────────────────────────────────────────────────────── */
+function finishExam() {
+  if (!confirm('Завершить тест? Неотвеченные вопросы останутся без ответа.')) return;
+  sendWS({ type: 'finish' });
+  showScreen('screen-loading');
+  setLoading('Завершаем тест…', 'Подсчёт результатов');
+}
+
+/* ── Render result ──────────────────────────────────────────────────────── */
+function renderResult(data) {
+  const score     = data.score || 0;
+  const total     = data.total_questions || 0;
+  const correct   = data.correct || 0;
+  const pending   = data.pending_grading || 0;
+  const duration  = data.duration_seconds || 0;
+
+  document.getElementById('result-title').textContent    = 'Тест завершён!';
+  document.getElementById('result-subtitle').textContent =
+    `${data.test_title} · ${data.student_name}`;
+
+  // Score ring animation
+  const fill    = document.getElementById('score-ring-fill');
+  const circumf = 408; // 2π * 65
+  const offset  = circumf - (score / 100) * circumf;
+
+  fill.className = 'score-ring-fill ' +
+    (score >= 70 ? 'green' : score >= 40 ? 'yellow' : 'red');
+  setTimeout(() => { fill.style.strokeDashoffset = offset; }, 100);
+
+  document.getElementById('result-score').textContent = Math.round(score) + '%';
+  document.getElementById('result-score').style.color =
+    score >= 70 ? 'var(--success)' : score >= 40 ? 'var(--warning)' : 'var(--error)';
+
+  // Icon based on score
+  document.getElementById('result-icon').textContent =
+    score >= 70 ? '🎉' : score >= 40 ? '📝' : '💪';
+
+  // Stats
+  document.getElementById('stat-total').textContent   = total;
+  document.getElementById('stat-correct').textContent = correct;
+
+  const mins = Math.floor(duration / 60), secs = Math.floor(duration % 60);
+  document.getElementById('stat-duration').textContent =
+    `${mins}м ${secs}с`;
+
+  // Pending notice
+  const pendingNote = document.getElementById('pending-note');
+  if (pending > 0) {
+    pendingNote.style.display = '';
+    document.getElementById('pending-count').textContent = pending;
+  } else {
+    pendingNote.style.display = 'none';
+  }
+}
+
+/* ── Error screen ───────────────────────────────────────────────────────── */
+function showError(title, msg, code) {
+  document.getElementById('err-title').textContent = title;
+  document.getElementById('err-msg').textContent   = msg;
+  document.getElementById('err-code').textContent  = code ? `Код ошибки: ${code}` : '';
+  setWsStatus('error');
+  showScreen('screen-error');
+}
+
+/* ── Reset / restart ────────────────────────────────────────────────────── */
+function resetApp() {
+  if (ws) { try { ws.close(); } catch(e){} ws = null; }
+  currentQ      = null;
+  totalQ        = 0;
+  answeredCount = 0;
+  submitLocked  = false;
+
+  document.getElementById('inp-key').value  = '';
+  document.getElementById('inp-name').value = '';
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-start').innerHTML = 'Начать тест';
+
+  setWsStatus('');
+  showScreen('screen-login');
+}
+
+/* ── Loading screen helper ──────────────────────────────────────────────── */
+function setLoading(text, sub) {
+  document.getElementById('loading-text').textContent = text || 'Загрузка…';
+  document.getElementById('loading-sub').textContent  = sub  || '';
+}
+
+/* ── Send helper ────────────────────────────────────────────────────────── */
+function sendWS(data) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(data));
+    console.debug('→ WS:', data.type, data);
+  } else {
+    toast('Нет соединения с сервером', 'error');
+  }
+}
+
+/* ── Keyboard shortcuts ─────────────────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('screen-login').classList.contains('active')) {
+    startExam();
+  }
+  if (e.key === 'Enter' && e.ctrlKey &&
+      document.getElementById('screen-exam').classList.contains('active')) {
+    submitAnswer();
+  }
+});
+</script>
+</body>
+</html>
