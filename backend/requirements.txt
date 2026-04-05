@@ -3,8 +3,10 @@ attrs==26.1.0
 certifi==2026.2.25
 charset-normalizer==3.4.7
 diff-match-patch==20241021
-Django==5.0.3
+Django==5.2.12
+django-cors-headers==4.9.0
 django-environ==0.13.0
+django-filter==25.2
 django-import-export==4.4.0
 django-jazzmin==3.0.4
 django-nested-admin==4.1.6
@@ -30,3 +32,4 @@ tablib==3.9.0
 typing_extensions==4.15.0
 uritemplate==4.2.0
 urllib3==2.6.3
+whitenoise==6.12.0
