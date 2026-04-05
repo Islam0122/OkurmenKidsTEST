@@ -6,229 +6,224 @@
   <title>OkurmenKids — Тестирование</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-<!-- ── Toast Container ─────────────────────────────────────────────────────── -->
-<div id="toast-container" aria-live="polite"></div>
+<div id="toast-container" aria-live="polite" role="alert"></div>
 
-<!-- ── App Shell ────────────────────────────────────────────────────────────── -->
 <div id="app">
 
-  <!-- SCREEN 1: Entry — Key Input -->
+  <!-- ══════════════════════════════════════════════════════
+       SCREEN 1 — Session Key Entry
+  ══════════════════════════════════════════════════════════ -->
   <div id="screen-entry" class="screen active">
+    <div class="bg-grid"></div>
+    <div class="bg-orbs">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+    </div>
+
     <div class="entry-layout">
       <div class="entry-brand">
-        <div class="brand-orb">
-          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M8 12L20 6L32 12V20C32 27.18 26.64 33.9 20 36C13.36 33.9 8 27.18 8 20V12Z" fill="url(#grad1)"/>
-            <path d="M15 20L18.5 23.5L25 17" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <div class="logo-mark">
+          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 16L24 8L40 16V28C40 37.6 33.3 46.4 24 48C14.7 46.4 8 37.6 8 28V16Z" fill="url(#logoGrad)"/>
+            <path d="M17 26L21.5 30.5L31 21" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
             <defs>
-              <linearGradient id="grad1" x1="8" y1="6" x2="32" y2="36" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#f59e0b"/>
-                <stop offset="1" stop-color="#d97706"/>
+              <linearGradient id="logoGrad" x1="8" y1="8" x2="40" y2="48" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#FF6B35"/>
+                <stop offset="1" stop-color="#F7C59F"/>
               </linearGradient>
             </defs>
           </svg>
         </div>
-        <div>
-          <h1 class="brand-name">OkurmenKids</h1>
-          <p class="brand-tagline">Платформа тестирования знаний</p>
+        <div class="brand-text">
+          <h1>OkurmenKids</h1>
+          <p>Платформа тестирования знаний</p>
         </div>
       </div>
 
-      <div class="entry-card glass-card">
-        <div class="entry-card-header">
-          <h2>Войти в сессию</h2>
-          <p>Введите ключ, который выдал преподаватель</p>
+      <div class="glass-panel entry-card">
+        <div class="panel-header">
+          <span class="panel-tag">Войти в сессию</span>
+          <h2>Введите ключ доступа</h2>
+          <p>Ключ выдаёт преподаватель перед началом теста</p>
         </div>
 
-        <div class="form-group">
-          <label for="session-key-input" class="form-label">Ключ сессии</label>
-          <div class="input-with-icon">
-            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div class="field-group">
+          <label class="field-label" for="session-key-input">Ключ сессии</label>
+          <div class="field-wrap">
+            <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
               <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
             </svg>
             <input
               type="text"
               id="session-key-input"
-              class="form-input"
+              class="field-input"
               placeholder="Вставьте или введите ключ..."
               autocomplete="off"
               spellcheck="false"
             />
+            <div class="field-glow"></div>
           </div>
         </div>
 
-        <button id="validate-btn" class="btn btn-primary btn-full">
-          <span class="btn-text">Проверить ключ</span>
-          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
+        <button id="validate-btn" class="btn btn-primary btn-block">
+          <span class="btn-label">Проверить ключ</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
 
-        <div class="entry-help">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
-          </svg>
-          Ключ выглядит как случайная строка символов
+        <div class="hint-row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          Ключ — случайная строка из букв и цифр
         </div>
       </div>
 
-      <div class="entry-features">
-        <div class="feature-pill">
-          <span class="feature-dot green"></span>Авто-проверка
-        </div>
-        <div class="feature-pill">
-          <span class="feature-dot amber"></span>Разные типы вопросов
-        </div>
-        <div class="feature-pill">
-          <span class="feature-dot blue"></span>Мгновенный результат
-        </div>
+      <div class="feature-strip">
+        <div class="feature-chip"><span class="chip-dot green"></span>Мгновенная проверка</div>
+        <div class="feature-chip"><span class="chip-dot amber"></span>4 типа вопросов</div>
+        <div class="feature-chip"><span class="chip-dot blue"></span>AI оценка кода</div>
       </div>
     </div>
   </div>
 
-  <!-- SCREEN 2: Session Info + Name -->
+  <!-- ══════════════════════════════════════════════════════
+       SCREEN 2 — Session Info + Name
+  ══════════════════════════════════════════════════════════ -->
   <div id="screen-name" class="screen">
-    <div class="center-layout">
-      <div class="back-row">
-        <button class="btn-ghost" id="back-to-entry">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-          Назад
-        </button>
-      </div>
+    <div class="bg-grid"></div>
+    <div class="center-wrap">
+      <button class="back-btn" id="back-to-entry">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Назад
+      </button>
 
-      <div class="session-info-card glass-card" id="session-info-display">
+      <div class="glass-panel session-info-panel" id="session-info-display">
         <!-- Populated by JS -->
       </div>
 
-      <div class="glass-card" style="margin-top:16px;">
-        <div class="entry-card-header">
-          <h2>Введите ваше имя</h2>
-          <p>Оно будет использовано для идентификации попытки</p>
+      <div class="glass-panel entry-card" style="margin-top:0;">
+        <div class="panel-header">
+          <span class="panel-tag">Участник</span>
+          <h2>Как вас зовут?</h2>
+          <p>Имя будет привязано к вашей попытке</p>
         </div>
-        <div class="form-group">
-          <label for="student-name-input" class="form-label">Ваше имя</label>
-          <div class="input-with-icon">
-            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+        <div class="field-group">
+          <label class="field-label" for="student-name-input">Полное имя</label>
+          <div class="field-wrap">
+            <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
             </svg>
-            <input
-              type="text"
-              id="student-name-input"
-              class="form-input"
-              placeholder="Имя Фамилия..."
-              autocomplete="name"
-            />
+            <input type="text" id="student-name-input" class="field-input" placeholder="Имя Фамилия..." autocomplete="name"/>
+            <div class="field-glow"></div>
           </div>
         </div>
-        <button id="start-attempt-btn" class="btn btn-primary btn-full">
-          <span class="btn-text">Начать тест</span>
-          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polygon points="5,3 19,12 5,21"/>
-          </svg>
+
+        <button id="start-attempt-btn" class="btn btn-primary btn-block">
+          <span class="btn-label">Начать тест</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5,3 19,12 5,21"/></svg>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- SCREEN 3: Test In Progress -->
+  <!-- ══════════════════════════════════════════════════════
+       SCREEN 3 — Test In Progress
+  ══════════════════════════════════════════════════════════ -->
   <div id="screen-test" class="screen">
-    <!-- Test Header Bar -->
-    <div class="test-header" id="test-header">
-      <div class="test-header-left">
-        <div class="test-logo-mini">OK</div>
-        <div class="test-meta">
-          <span class="test-title-label" id="hdr-test-title">—</span>
-          <span class="test-student-label" id="hdr-student-name">—</span>
+    <!-- Sticky header -->
+    <header class="test-bar" id="test-bar">
+      <div class="test-bar-left">
+        <div class="test-logo">OK</div>
+        <div class="test-info">
+          <span class="test-name" id="hdr-test-title">—</span>
+          <span class="test-student" id="hdr-student-name">—</span>
         </div>
       </div>
-      <div class="test-header-center">
-        <div class="progress-track">
-          <div class="progress-fill" id="progress-fill"></div>
-        </div>
-        <span class="progress-label" id="progress-label">0 / 0</span>
+
+      <div class="test-bar-center">
+        <div class="prog-track"><div class="prog-bar" id="prog-bar"></div></div>
+        <span class="prog-label" id="prog-label">0 / 0</span>
       </div>
-      <div class="test-header-right">
-        <div class="timer-display" id="timer-display">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="timer-icon">
-            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-          </svg>
-          <span id="timer-value">00:00</span>
+
+      <div class="test-bar-right">
+        <div class="timer" id="timer-el">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <span id="timer-val">00:00</span>
         </div>
-        <button class="btn btn-danger-ghost btn-sm" id="finish-btn">
-          Завершить
-        </button>
+        <button class="btn-finish-sm" id="finish-btn">Завершить</button>
       </div>
+    </header>
+
+    <!-- Question nav dots -->
+    <div class="q-nav-strip">
+      <div class="q-nav-inner" id="q-nav"></div>
     </div>
 
-    <!-- Question Area -->
-    <div class="test-body" id="test-body">
-      <div class="question-nav" id="question-nav">
-        <!-- Question dots populated by JS -->
-      </div>
-
-      <div class="question-card glass-card" id="question-card">
+    <!-- Main test area -->
+    <div class="test-canvas" id="test-canvas">
+      <div class="q-card glass-panel" id="q-card">
         <!-- Populated by JS -->
       </div>
 
-      <div class="question-controls">
-        <button class="btn btn-ghost-outline" id="prev-btn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
+      <div class="nav-row">
+        <button class="btn btn-ghost" id="prev-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           Назад
         </button>
         <button class="btn btn-primary" id="next-btn">
-          Далее
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
+          <span>Далее</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- SCREEN 4: Results -->
+  <!-- ══════════════════════════════════════════════════════
+       SCREEN 4 — Results
+  ══════════════════════════════════════════════════════════ -->
   <div id="screen-result" class="screen">
-    <div class="result-layout">
-      <div class="result-hero" id="result-hero">
-        <!-- Populated by JS -->
-      </div>
+    <div class="bg-grid"></div>
+    <div class="result-scroll">
+      <div class="result-wrap">
 
-      <div class="result-grid" id="result-stats-grid">
-        <!-- Populated by JS -->
-      </div>
+        <div class="result-hero glass-panel" id="result-hero">
+          <!-- Populated by JS -->
+        </div>
 
-      <div class="result-answers" id="result-answers">
-        <!-- Populated by JS -->
-      </div>
+        <div class="result-stats" id="result-stats">
+          <!-- Populated by JS -->
+        </div>
 
-      <div class="result-actions">
-        <button class="btn btn-primary" id="restart-btn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
-          </svg>
-          Начать снова
-        </button>
+        <div class="glass-panel result-breakdown" id="result-breakdown">
+          <div class="breakdown-header">Детализация ответов</div>
+          <div id="breakdown-list"></div>
+        </div>
+
+        <div class="result-actions">
+          <button class="btn btn-primary" id="restart-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Пройти снова
+          </button>
+        </div>
+
       </div>
     </div>
   </div>
 
-  <!-- SCREEN: Loading Overlay -->
-  <div id="screen-loading" class="screen-loading hidden">
-    <div class="loading-content">
-      <div class="spinner-ring"></div>
-      <p id="loading-text">Загрузка...</p>
+  <!-- Loading overlay -->
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="loading-box">
+      <div class="loader-ring"></div>
+      <p id="loading-msg">Загрузка...</p>
     </div>
   </div>
 
-</div><!-- /#app -->
+</div>
 
 <script src="app.js"></script>
 </body>
