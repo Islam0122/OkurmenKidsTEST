@@ -93,9 +93,11 @@ class Question(models.Model):
         verbose_name        = 'Вопрос'
         verbose_name_plural = 'Вопросы'
         indexes             = [models.Index(fields=['test', 'order'])]
+        unique_together = ['test', 'text']
 
     def __str__(self):
         return f'[{self.test.title}] {self.text[:60]}'
+
 
     def clean(self):
         if self.question_type == QuestionType.CODE and not self.language:
