@@ -43,12 +43,19 @@ async def _get_session() -> aiohttp.ClientSession:
                     sock_read=settings.HTTP_READ_TIMEOUT,
                     total=settings.HTTP_TOTAL_TIMEOUT,
                 )
+                import ssl
+                ssl_ctx = ssl.create_default_context()
+                ssl_ctx.check_hostname = False
+                ssl_ctx.verify_mode = ssl.CERT_NONE
+
                 connector = aiohttp.TCPConnector(
                     limit=100,
                     limit_per_host=20,
                     ttl_dns_cache=300,
                     use_dns_cache=True,
+                    ssl=ssl_ctx,
                 )
+
                 _session = aiohttp.ClientSession(
                     base_url=settings.DJANGO_API_BASE,
                     timeout=timeout,

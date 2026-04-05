@@ -26,13 +26,8 @@ CORS_ALLOW_CREDENTIALS = True
 
 _ENV = os.getenv('DJANGO_ENV', 'development')
 
-if _ENV == 'production':
-    CORS_ALLOWED_ORIGINS: list[str] = []
-    CORS_ALLOW_ALL_ORIGINS = False
-    CORS_ALLOWED_ORIGIN_REGEXES: list[str] = []
-else:
-    CORS_ALLOW_ALL_ORIGINS = False
-    CORS_ALLOWED_ORIGIN_REGEXES = [
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGIN_REGEXES = [
         r'^http://127\.0\.0\.1(:\d+)?$',
         r'^http://localhost(:\d+)?$',
     ]
