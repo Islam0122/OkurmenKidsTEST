@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 from django.db import transaction
 from django.core.exceptions import ValidationError
@@ -13,45 +13,54 @@ def _models():
     from ..models import (
         Test, TestSession, StudentAttempt, Answer,
         Question, QuestionOption, AttemptStatus, SessionStatus,
+        SessionType, GradingStatus,
     )
-    return Test, TestSession, StudentAttempt, Answer, Question, QuestionOption, AttemptStatus, SessionStatus
+    return (
+        Test, TestSession, StudentAttempt, Answer,
+        Question, QuestionOption, AttemptStatus, SessionStatus,
+        SessionType, GradingStatus,
+    )
 
 
 # ─── DTOs ─────────────────────────────────────────────────────────────────────
 
 @dataclass
 class SessionCreateResult:
-    session_id: str
-    key: str
-    title: str
-    test_title: str
-    expires_at: str
-    status: str
+    session_id:   str
+    key:          str
+    title:        str
+    session_type: str
+    test_title:   str
+    expires_at:   str
+    status:       str
 
 
 @dataclass
 class AttemptStartResult:
-    attempt_id: str
+    attempt_id:   str
     student_name: str
-    test_title: str
-    questions: list
+    test_title:   str
+    session_type: str
+    questions:    list
 
 
 @dataclass
 class AnswerResult:
-    answer_id: str
-    is_correct: Optional[bool]
-    message: str
+    answer_id:      str
+    is_correct:     Optional[bool]
+    grading_status: str
+    message:        str
 
 
 @dataclass
 class FinishResult:
-    attempt_id: str
-    student_name: str
-    score: float
-    total_questions: int
-    answered: int
-    correct: int
+    attempt_id:       str
+    student_name:     str
+    score:            float
+    total_questions:  int
+    answered:         int
+    correct:          int
+    pending_grading:  int
     duration_seconds: Optional[float]
 
 
@@ -60,19 +69,37 @@ class FinishResult:
 class SessionService:
 
     @staticmethod
-    def create_session(test_id: str, title: str = '') -> SessionCreateResult:
+    def create_session(
+        test_id: str,
+        title: str = '',
+        session_type: str = 'exam',
+        max_attempts_per_student: Optional[int] = None,
+    ) -> SessionCreateResult:
         Test, TestSession, *_ = _models()
         try:
             test = Test.objects.get(pk=test_id, is_active=True)
         except Test.DoesNotExist:
             raise ValidationError(f'Test {test_id} not found or inactive.')
 
-        session = TestSession.objects.create(test=test, title=title.strip())
-        logger.info('Session %s created for test "%s" title="%s"', session.key, test.title, session.title)
+        # Для exam дефолтный лимит = 1 если не передан явно
+        if session_type == 'exam' and max_attempts_per_student is None:
+            max_attempts_per_student = 1
+
+        session = TestSession.objects.create(
+            test=test,
+            title=title.strip(),
+            session_type=session_type,
+            max_attempts_per_student=max_attempts_per_student,
+        )
+        logger.info(
+            'Session %s [%s] created for test "%s"',
+            session.key, session_type, test.title,
+        )
         return SessionCreateResult(
             session_id=str(session.id),
             key=session.key,
             title=session.title,
+            session_type=session.session_type,
             test_title=test.title,
             expires_at=session.expires_at.isoformat(),
             status=session.status,
@@ -101,17 +128,17 @@ class SessionService:
 
     @staticmethod
     def get_session_data(key: str) -> dict:
-        """FastAPI-facing: minimal JSON payload for a session."""
         session   = SessionService.validate_session(key)
         questions = _serialize_questions(session.test)
         return {
-            'session_id': str(session.id),
-            'test_id':    str(session.test.id),
-            'test_title': session.test.title,
-            'title':      session.title,
-            'status':     session.status,
-            'expires_at': session.expires_at.isoformat(),
-            'questions':  questions,
+            'session_id':   str(session.id),
+            'test_id':      str(session.test.id),
+            'test_title':   session.test.title,
+            'title':        session.title,
+            'session_type': session.session_type,
+            'status':       session.status,
+            'expires_at':   session.expires_at.isoformat(),
+            'questions':    questions,
         }
 
 
@@ -121,30 +148,37 @@ class AttemptService:
 
     @staticmethod
     def start_attempt(key: str, student_name: str) -> AttemptStartResult:
-        _, _, StudentAttempt, _, _, _, AttemptStatus, SessionStatus = _models()
+        _, _, StudentAttempt, _, _, _, AttemptStatus, SessionStatus, *_ = _models()
         student_name = student_name.strip()
         if not student_name:
             raise ValidationError('student_name is required.')
 
         session = SessionService.validate_session(key)
 
+        if not session.can_student_attempt(student_name):
+            raise ValidationError(
+                f'Student "{student_name}" has reached the attempt limit for this session.'
+            )
+
         with transaction.atomic():
-            if StudentAttempt.objects.filter(session=session, student_name=student_name).exists():
-                raise ValidationError(
-                    f'Student "{student_name}" already has an attempt for this session.'
-                )
-            attempt = StudentAttempt.objects.create(session=session, student_name=student_name)
+            attempt = StudentAttempt.objects.create(
+                session=session,
+                student_name=student_name,
+            )
             if session.status == SessionStatus.CREATED:
                 session.status = SessionStatus.RUNNING
                 session.save(update_fields=['status'])
 
-        logger.info('Attempt %s started by "%s"', attempt.id, student_name)
-        questions = _serialize_questions(session.test)
+        logger.info(
+            'Attempt %s started by "%s" [session_type=%s]',
+            attempt.id, student_name, session.session_type,
+        )
         return AttemptStartResult(
             attempt_id=str(attempt.id),
             student_name=student_name,
             test_title=session.test.title,
-            questions=questions,
+            session_type=session.session_type,
+            questions=_serialize_questions(session.test),
         )
 
     @staticmethod
@@ -159,10 +193,11 @@ class AttemptService:
 
         attempt.finish()
 
-        answers  = attempt.answers.all()
-        answered = answers.count()
-        correct  = answers.filter(is_correct=True).count()
-        total    = attempt.session.test.question_count
+        answers         = attempt.answers.all()
+        answered        = answers.count()
+        correct         = answers.filter(is_correct=True).count()
+        pending_grading = answers.filter(is_correct=None).count()
+        total           = attempt.session.test.question_count
 
         logger.info('Attempt %s finished. Score: %.2f', attempt_id, attempt.score)
         return FinishResult(
@@ -172,6 +207,7 @@ class AttemptService:
             total_questions=total,
             answered=answered,
             correct=correct,
+            pending_grading=pending_grading,
             duration_seconds=attempt.duration_seconds,
         )
 
@@ -201,6 +237,7 @@ class AttemptService:
                 'question_text':    a.question.text,
                 'question_type':    a.question.question_type,
                 'is_correct':       a.is_correct,
+                'grading_status':   a.grading_status,
                 'answer_text':      a.answer_text,
                 'selected_options': a.selected_options,
                 'answered_at':      a.answered_at.isoformat(),
@@ -209,6 +246,9 @@ class AttemptService:
                 item['correct_options'] = [
                     str(o.id) for o in a.question.options.filter(is_correct=True)
                 ]
+            if a.ai_grade is not None:
+                item['ai_grade']    = a.ai_grade
+                item['ai_feedback'] = a.ai_feedback
             answer_data.append(item)
 
         return {
@@ -216,6 +256,7 @@ class AttemptService:
             'student_name':     attempt.student_name,
             'test_title':       attempt.session.test.title,
             'session_title':    attempt.session.title,
+            'session_type':     attempt.session.session_type,
             'score':            attempt.score,
             'status':           attempt.status,
             'started_at':       attempt.started_at.isoformat(),
@@ -237,7 +278,7 @@ class AnswerService:
         answer_text: str = '',
         selected_options: list[str] | None = None,
     ) -> AnswerResult:
-        _, _, StudentAttempt, Answer, Question, _, AttemptStatus, _ = _models()
+        _, _, StudentAttempt, Answer, Question, _, _, _, _, GradingStatus = _models()
         selected_options = selected_options or []
 
         try:
@@ -252,12 +293,12 @@ class AnswerService:
 
         try:
             question = Question.objects.prefetch_related('options').get(
-                pk=question_id, test=attempt.session.test
+                pk=question_id, test=attempt.session.test,
             )
         except Question.DoesNotExist:
             raise ValidationError('Question not found in this test.')
 
-        is_correct = AnswerService._evaluate(question, answer_text, selected_options)
+        is_correct, grading_status = AnswerService._evaluate(question, answer_text, selected_options)
 
         with transaction.atomic():
             answer, _ = Answer.objects.update_or_create(
@@ -267,31 +308,44 @@ class AnswerService:
                     'answer_text':      answer_text,
                     'selected_options': [str(o) for o in selected_options],
                     'is_correct':       is_correct,
+                    'grading_status':   grading_status,
                 },
             )
 
         return AnswerResult(
             answer_id=str(answer.id),
             is_correct=is_correct,
+            grading_status=grading_status,
             message=(
-                'Answer saved.' if is_correct is None
+                'Answer saved, pending grading.' if is_correct is None
                 else ('Correct!' if is_correct else 'Incorrect.')
             ),
         )
 
     @staticmethod
-    def _evaluate(question, answer_text: str, selected_options: list[str]) -> Optional[bool]:
+    def _evaluate(
+        question,
+        answer_text: str,
+        selected_options: list[str],
+    ) -> tuple[Optional[bool], str]:
+        from ..models import GradingStatus
         qtype = question.question_type
+
         if qtype == 'single_choice':
             correct_ids = {str(o.id) for o in question.options.filter(is_correct=True)}
-            return len(selected_options) == 1 and set(selected_options) == correct_ids
+            result = len(selected_options) == 1 and set(selected_options) == correct_ids
+            return result, GradingStatus.AUTO
+
         if qtype == 'multiple_choice':
             correct_ids = {str(o.id) for o in question.options.filter(is_correct=True)}
-            return set(selected_options) == correct_ids
-        return None  # text / code — requires AI grading
+            result = set(selected_options) == correct_ids
+            return result, GradingStatus.AUTO
+
+        # text / code — требует AI или ручной проверки
+        return None, GradingStatus.PENDING
 
 
-# ─── SyncService (FastAPI integration) ───────────────────────────────────────
+# ─── SyncService ──────────────────────────────────────────────────────────────
 
 class SyncService:
 
@@ -314,8 +368,7 @@ class SyncService:
 
     @staticmethod
     def finalize_results(attempt_id: str) -> dict:
-        result = AttemptService.finish_attempt(attempt_id)
-        return result.__dict__
+        return AttemptService.finish_attempt(attempt_id).__dict__
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -331,11 +384,12 @@ def _serialize_questions(test) -> list:
     result = []
     for q in qs:
         item = {
-            'id':         str(q.id),
-            'text':       q.text,
-            'type':       q.question_type,
-            'difficulty': q.difficulty,
-            'order':      q.order,
+            'id':               str(q.id),
+            'text':             q.text,
+            'type':             q.question_type,
+            'difficulty':       q.difficulty,
+            'order':            q.order,
+            'is_auto_gradable': q.is_auto_gradable,
         }
         if q.language:
             item['language'] = q.language
@@ -350,10 +404,15 @@ def _serialize_questions(test) -> list:
     return result
 
 
-# ─── Public aliases (backwards compat) ───────────────────────────────────────
+# ─── Public aliases ───────────────────────────────────────────────────────────
 
-def create_session(test_id: str, title: str = '') -> SessionCreateResult:
-    return SessionService.create_session(test_id, title)
+def create_session(
+    test_id: str,
+    title: str = '',
+    session_type: str = 'exam',
+    max_attempts_per_student: Optional[int] = None,
+) -> SessionCreateResult:
+    return SessionService.create_session(test_id, title, session_type, max_attempts_per_student)
 
 
 def get_valid_session(key: str):
@@ -364,7 +423,12 @@ def start_attempt(key: str, student_name: str) -> AttemptStartResult:
     return AttemptService.start_attempt(key, student_name)
 
 
-def submit_answer(attempt_id, question_id, answer_text='', selected_options=None) -> AnswerResult:
+def submit_answer(
+    attempt_id: str,
+    question_id: str,
+    answer_text: str = '',
+    selected_options: list | None = None,
+) -> AnswerResult:
     return AnswerService.submit_answer(attempt_id, question_id, answer_text, selected_options)
 
 

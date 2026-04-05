@@ -1,15 +1,12 @@
 """
 admin.py — Testing app.
-QuestionAdmin получает кастомные кнопки Импорт / Экспорт / Шаблон
-через change_list_template override.
 """
-
 from __future__ import annotations
 
 import nested_admin
 from django.contrib import admin, messages
 from django.db.models import Count
-from django.urls import path, reverse
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
 
@@ -38,6 +35,10 @@ DIFFICULTY_COLORS = {'easy': '#2ecc71', 'medium': '#f39c12', 'hard': '#e74c3c'}
 STATUS_COLORS = {
     'created': '#3498db', 'running': '#27ae60', 'finished': '#7f8c8d',
     'active':  '#27ae60', 'expired': '#e74c3c',
+}
+SESSION_TYPE_COLORS = {
+    'exam':     '#e74c3c',
+    'training': '#9b59b6',
 }
 CHOICE_TYPES = {QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE}
 
@@ -80,8 +81,14 @@ class AnswerInline(admin.TabularInline):
     max_num             = 0
     verbose_name        = 'Ответ пользователя'
     verbose_name_plural = 'Ответы пользователя'
-    readonly_fields     = ['question_display', 'answer_display', 'correctness_badge', 'answered_at']
-    fields              = ['question_display', 'answer_display', 'correctness_badge', 'answered_at']
+    readonly_fields     = [
+        'question_display', 'answer_display',
+        'correctness_badge', 'grading_status_badge', 'answered_at',
+    ]
+    fields = [
+        'question_display', 'answer_display',
+        'correctness_badge', 'grading_status_badge', 'answered_at',
+    ]
 
     def question_display(self, obj):
         return obj.question.text[:80] if obj and obj.question_id else '—'
@@ -103,17 +110,32 @@ class AnswerInline(admin.TabularInline):
         return _badge('✓ Верно', '#27ae60') if obj.is_correct else _badge('✗ Неверно', '#e74c3c')
     correctness_badge.short_description = 'Результат'
 
+    def grading_status_badge(self, obj):
+        if not obj:
+            return '—'
+        colors = {
+            'pending': '#7f8c8d',
+            'auto':    '#3498db',
+            'ai':      '#9b59b6',
+            'manual':  '#f39c12',
+        }
+        return _badge(
+            obj.get_grading_status_display(),
+            colors.get(obj.grading_status, '#7f8c8d'),
+        )
+    grading_status_badge.short_description = 'Проверка'
+
 
 class AttemptInline(admin.TabularInline):
-    model            = StudentAttempt
-    extra            = 0
-    can_delete       = False
-    max_num          = 0
-    show_change_link = True
+    model               = StudentAttempt
+    extra               = 0
+    can_delete          = False
+    max_num             = 0
+    show_change_link    = True
     verbose_name        = 'Попытка прохождения'
     verbose_name_plural = 'Попытки прохождения'
-    readonly_fields  = ['student_name', 'status_badge', 'score_display', 'started_at', 'finished_at']
-    fields           = ['student_name', 'status_badge', 'score_display', 'started_at', 'finished_at']
+    readonly_fields     = ['student_name', 'status_badge', 'score_display', 'started_at', 'finished_at']
+    fields              = ['student_name', 'status_badge', 'score_display', 'started_at', 'finished_at']
 
     def status_badge(self, obj):
         if not obj:
@@ -174,18 +196,18 @@ class TestAdmin(nested_admin.NestedModelAdmin):
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    resource_classes       = [QuestionResource]
-    change_list_template   = 'admin/testing/question_change_list.html'
+    resource_classes     = [QuestionResource]
+    change_list_template = 'admin/testing/question_change_list.html'
 
-    list_display     = [
+    list_display  = [
         'short_text', 'test_link', 'type_badge', 'difficulty_badge',
         'language', 'order', 'options_link',
     ]
-    list_filter      = ['question_type', 'difficulty', 'language', 'test']
-    search_fields    = ['text', 'test__title']
-    ordering         = ['test', 'order']
-    inlines          = [QuestionOptionInline]
-    readonly_fields  = ['created_at', 'options_link']
+    list_filter   = ['question_type', 'difficulty', 'language', 'test']
+    search_fields = ['text', 'test__title']
+    ordering      = ['test', 'order']
+    inlines       = [QuestionOptionInline]
+    readonly_fields = ['created_at', 'options_link']
     fieldsets = [
         ('Основное',   {'fields': ['test', 'text', 'question_type', 'difficulty', 'order']}),
         ('Код / Язык', {'fields': ['language', 'metadata']}),
@@ -263,10 +285,10 @@ class QuestionAdmin(admin.ModelAdmin):
 @admin.register(QuestionOption)
 class QuestionOptionAdmin(admin.ModelAdmin):
     resource_classes = [QuestionOptionResource]
-    list_display  = ['text_short', 'question_link', 'correct_badge', 'order']
-    list_filter   = ['is_correct', 'question__question_type']
-    search_fields = ['text', 'question__text']
-    ordering      = ['question', 'order']
+    list_display     = ['text_short', 'question_link', 'correct_badge', 'order']
+    list_filter      = ['is_correct', 'question__question_type']
+    search_fields    = ['text', 'question__text']
+    ordering         = ['question', 'order']
 
     def text_short(self, obj):
         return obj.text[:80]
@@ -288,22 +310,29 @@ class QuestionOptionAdmin(admin.ModelAdmin):
 
 @admin.register(TestSession)
 class TestSessionAdmin(admin.ModelAdmin):
-    resource_classes    = [TestSessionResource]
-    list_display        = [
-        'session_label', 'test_link', 'status_badge', 'valid_indicator',
+    resource_classes = [TestSessionResource]
+    list_display     = [
+        'session_label', 'test_link', 'session_type_badge',
+        'status_badge', 'valid_indicator',
         'expires_display', 'attempts_display', 'created_at',
     ]
-    list_filter         = ['status', 'is_active', 'test']
-    search_fields       = ['key', 'title', 'test__title']
-    ordering            = ['-created_at']
-    inlines             = [AttemptInline]
-    actions             = ['force_expire']
-    readonly_fields     = [
+    list_filter      = ['session_type', 'status', 'is_active', 'test']
+    search_fields    = ['key', 'title', 'test__title']
+    ordering         = ['-created_at']
+    inlines          = [AttemptInline]
+    actions          = ['force_expire']
+    readonly_fields  = [
         'id', 'key', 'created_at', 'expires_at',
         'valid_indicator', 'expires_display', 'attempts_display',
     ]
     fieldsets = [
-        ('Сессия',  {'fields': ['id', 'key', 'test', 'title', 'status', 'is_active']}),
+        ('Сессия', {
+            'fields': [
+                'id', 'key', 'test', 'title',
+                'session_type', 'max_attempts_per_student',
+                'status', 'is_active',
+            ],
+        }),
         ('Время',   {'fields': ['created_at', 'expires_at', 'valid_indicator', 'expires_display']}),
         ('Попытки', {'fields': ['attempts_display']}),
     ]
@@ -322,6 +351,14 @@ class TestSessionAdmin(admin.ModelAdmin):
             )
         return obj.key
     session_label.short_description = 'Сессия'
+
+    def session_type_badge(self, obj):
+        return _badge(
+            obj.get_session_type_display(),
+            SESSION_TYPE_COLORS.get(obj.session_type, '#7f8c8d'),
+        )
+    session_type_badge.short_description = 'Тип'
+    session_type_badge.admin_order_field = 'session_type'
 
     def test_link(self, obj):
         url = reverse('admin:testing_test_change', args=[obj.test_id])
@@ -343,6 +380,9 @@ class TestSessionAdmin(admin.ModelAdmin):
     def expires_display(self, obj):
         if not obj or not obj.pk:
             return '—'
+        # Training: время не критично — показываем иначе
+        if obj.is_training:
+            return format_html('<span style="color:#9b59b6;">∞ Тренажёр</span>')
         now = timezone.now()
         if obj.expires_at < now:
             return format_html(
@@ -362,7 +402,9 @@ class TestSessionAdmin(admin.ModelAdmin):
             return '—'
         total  = obj.attempts.count()
         active = obj.attempts.filter(status=AttemptStatus.ACTIVE).count()
-        return format_html('{} активных / {} всего', active, total)
+        limit  = obj.max_attempts_per_student
+        limit_str = f' / лимит: {limit}' if limit is not None else ' / лимит: ∞'
+        return format_html('{} активных / {} всего{}', active, total, limit_str)
     attempts_display.short_description = 'Попытки'
 
     @admin.action(description='Принудительно завершить сессию')
@@ -380,10 +422,10 @@ class TestSessionAdmin(admin.ModelAdmin):
 class StudentAttemptAdmin(admin.ModelAdmin):
     resource_classes = [StudentAttemptResource]
     list_display     = [
-        'student_name', 'test_title', 'session_link', 'status_badge',
-        'score_display', 'started_at', 'finished_at', 'duration_display',
+        'student_name', 'test_title', 'session_link', 'session_type_badge',
+        'status_badge', 'score_display', 'started_at', 'finished_at', 'duration_display',
     ]
-    list_filter      = ['status', 'session__test', 'started_at']
+    list_filter      = ['status', 'session__session_type', 'session__test', 'started_at']
     search_fields    = ['student_name', 'session__test__title', 'session__key', 'session__title']
     ordering         = ['-started_at']
     inlines          = [AnswerInline]
@@ -393,7 +435,9 @@ class StudentAttemptAdmin(admin.ModelAdmin):
     ]
     fieldsets = [
         ('Студент',   {'fields': ['id', 'student_name', 'session']}),
-        ('Результат', {'fields': ['status', 'score_display', 'started_at', 'finished_at', 'duration_display']}),
+        ('Результат', {
+            'fields': ['status', 'score_display', 'started_at', 'finished_at', 'duration_display'],
+        }),
     ]
 
     def has_add_permission(self, request):
@@ -411,6 +455,16 @@ class StudentAttemptAdmin(admin.ModelAdmin):
         label = obj.session.title or obj.session.key[:16]
         return format_html('<a href="{}">{}</a>', url, label)
     session_link.short_description = 'Сессия'
+
+    def session_type_badge(self, obj):
+        if not obj or not obj.session_id:
+            return '—'
+        return _badge(
+            obj.session.get_session_type_display(),
+            SESSION_TYPE_COLORS.get(obj.session.session_type, '#7f8c8d'),
+        )
+    session_type_badge.short_description = 'Тип сессии'
+    session_type_badge.admin_order_field = 'session__session_type'
 
     def status_badge(self, obj):
         if not obj:
@@ -443,8 +497,11 @@ class StudentAttemptAdmin(admin.ModelAdmin):
 @admin.register(Answer)
 class AnswerAdmin(admin.ModelAdmin):
     resource_classes = [AnswerResource]
-    list_display     = ['student_name', 'question_short', 'answer_preview', 'correctness_badge', 'answered_at']
-    list_filter      = ['is_correct', 'question__question_type']
+    list_display     = [
+        'student_name', 'question_short', 'answer_preview',
+        'correctness_badge', 'grading_status_badge', 'answered_at',
+    ]
+    list_filter      = ['is_correct', 'grading_status', 'question__question_type']
     search_fields    = ['attempt__student_name', 'question__text']
     ordering         = ['-answered_at']
     readonly_fields  = [f.name for f in Answer._meta.fields]
@@ -480,6 +537,22 @@ class AnswerAdmin(admin.ModelAdmin):
         return _badge('✓ Верно', '#27ae60') if obj.is_correct else _badge('✗ Неверно', '#e74c3c')
     correctness_badge.short_description = 'Результат'
     correctness_badge.admin_order_field = 'is_correct'
+
+    def grading_status_badge(self, obj):
+        if not obj:
+            return '—'
+        colors = {
+            'pending': '#7f8c8d',
+            'auto':    '#3498db',
+            'ai':      '#9b59b6',
+            'manual':  '#f39c12',
+        }
+        return _badge(
+            obj.get_grading_status_display(),
+            colors.get(obj.grading_status, '#7f8c8d'),
+        )
+    grading_status_badge.short_description = 'Проверка'
+    grading_status_badge.admin_order_field = 'grading_status'
 
 
 from django.contrib.auth.models import Group, User  # noqa: E402
