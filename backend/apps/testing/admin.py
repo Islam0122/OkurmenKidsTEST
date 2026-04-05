@@ -477,7 +477,8 @@ class StudentAttemptAdmin(admin.ModelAdmin):
         if not obj or not obj.is_finished:
             return '—'
         color = '#27ae60' if obj.score >= 70 else '#f39c12' if obj.score >= 40 else '#e74c3c'
-        return format_html('<strong style="font-size:15px;color:{};">{:.1f}%</strong>', color, obj.score)
+        return format_html('<strong style="font-size:15px;color:{};">{}%</strong>', color, obj.score)
+
     score_display.short_description = 'Балл'
     score_display.admin_order_field = 'score'
 

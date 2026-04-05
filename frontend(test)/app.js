@@ -9,7 +9,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    CONFIG
    ═══════════════════════════════════════════════════════════════════════════ */
-const BASE_URL = 'https://okurmenkidstest.up.railway.app';
+const BASE_URL = 'http://127.0.0.1:8000';
 
 const ENDPOINTS = {
   validate:     `${BASE_URL}/api/v1/sessions/validate`,
@@ -375,7 +375,6 @@ function renderQuestion() {
     if (ans.is_correct === false) return `<div class="result-pill pill-wrong">${SVG.x()} Неверно</div>`;
     return `<div class="result-pill pill-pending">${SVG.clock()} Ожидает проверки</div>`;
   }
-
   /* ── Build answer body based on question_type ──────────────────────────── */
   let answerBody = '';
 
@@ -479,7 +478,7 @@ function renderQuestion() {
      TYPE: code — monospace textarea with editor chrome
      GUARANTEE: always shows code area with current value
   ─────────────────────────────────────────────────────────────────────────── */
-  else if (q.question_type === 'code') {
+  else if (q.type === 'code') {
     const lang = q.language || 'code';
     answerBody = `
       <div class="answer-hint hint-code">
@@ -526,7 +525,7 @@ function renderQuestion() {
     answerBody = `
       <div class="answer-hint hint-text">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-        Введите ваш ответ (тип: ${esc(q.question_type || 'unknown')})
+        Введите ваш ответ (тип: ${esc(q.type || 'unknown')})
       </div>
       <textarea class="answer-textarea" id="answer-textarea" rows="6"
         placeholder="Ваш ответ...">${esc(ans.answerText || '')}</textarea>
@@ -544,17 +543,8 @@ function renderQuestion() {
     ${answerBody}
   `;
 
-  /* ── Bind option interactions ──────────────────────────────────────────── */
-  if (q.question_type === 'single_choice' || q.question_type === 'multiple_choice') {
-    const isMulti = q.question_type === 'multiple_choice';
-    $$('.option', card).forEach(optEl => {
-      const handler = (e) => { e.preventDefault(); handleOptionClick(optEl, q, isMulti); };
-      optEl.addEventListener('click', handler);
-      optEl.addEventListener('keydown', e => {
-        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); handleOptionClick(optEl, q, isMulti); }
-      });
-    });
-  }
+  /* ── NO DIRECT EVENT LISTENERS ON OPTIONS ANYMORE ───────────────────────── */
+  /* All option clicks are handled by global delegation in initTestClickHandler() */
 
   /* ── Bind textarea interactions ────────────────────────────────────────── */
   const textarea = $('#answer-textarea', card);
@@ -650,6 +640,67 @@ function renderQuestion() {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLOBAL EVENT DELEGATION FOR OPTIONS (FIXES THE ISSUE)
+   ═══════════════════════════════════════════════════════════════════════════ */
+function initTestClickHandler() {
+  document.addEventListener('click', (e) => {
+    // Find the actual option element (either .option itself or a child inside it)
+    let optionEl = e.target.closest('.option');
+    if (!optionEl) return;
+
+    // Only handle clicks when test screen is active
+    const testScreen = $('#screen-test');
+    if (!testScreen || !testScreen.classList.contains('active')) return;
+
+    const card = $('#q-card');
+    if (!card) return;
+
+    const currentQuestion = state.questions[state.currentIdx];
+    if (!currentQuestion) return;
+
+    // Determine if multiple choice
+    const isMulti = currentQuestion.question_type === 'multiple_choice';
+    const optId = optionEl.dataset.optId;
+    if (!optId) return;
+
+    // Get or initialize answer state for this question
+    if (!state.answers[currentQuestion.id]) {
+      state.answers[currentQuestion.id] = { selectedOptions: [] };
+    }
+    const ans = state.answers[currentQuestion.id];
+
+    // Update UI and state based on type
+    if (isMulti) {
+      // Toggle for multiple choice
+      const set = new Set(ans.selectedOptions || []);
+      if (set.has(optId)) {
+        set.delete(optId);
+        optionEl.classList.remove('check-selected');
+        optionEl.setAttribute('aria-checked', 'false');
+      } else {
+        set.add(optId);
+        optionEl.classList.add('check-selected');
+        optionEl.setAttribute('aria-checked', 'true');
+      }
+      ans.selectedOptions = [...set];
+    } else {
+      // Single choice: deselect all others, select this one
+      const allOptions = $$('.option', card);
+      allOptions.forEach(opt => {
+        opt.classList.remove('radio-selected');
+        opt.setAttribute('aria-checked', 'false');
+      });
+      optionEl.classList.add('radio-selected');
+      optionEl.setAttribute('aria-checked', 'true');
+      ans.selectedOptions = [optId];
+    }
+
+    // Submit the answer
+    autoSubmitChoice(currentQuestion);
+  });
+}
+
 /* ── Save current text answer to state (called on blur / navigate) ─────────── */
 function autoSaveText() {
   const textarea = $('#answer-textarea');
@@ -659,27 +710,6 @@ function autoSaveText() {
   if (!state.answers[q.id]) state.answers[q.id] = {};
   state.answers[q.id].answerText = textarea.value;
   if (textarea.value.trim()) saveTextAnswer(q);
-}
-
-/* ── Handle option click (radio / checkbox) ─────────────────────────────────── */
-function handleOptionClick(optEl, question, isMulti) {
-  const optId = optEl.dataset.optId;
-  if (!state.answers[question.id]) state.answers[question.id] = { selectedOptions: [] };
-  const ans = state.answers[question.id];
-
-  if (isMulti) {
-    const set = new Set(ans.selectedOptions || []);
-    if (set.has(optId)) { set.delete(optId); optEl.classList.remove('check-selected'); optEl.setAttribute('aria-checked','false'); }
-    else                { set.add(optId);    optEl.classList.add('check-selected');    optEl.setAttribute('aria-checked','true'); }
-    ans.selectedOptions = [...set];
-  } else {
-    $$('.option', $('#q-card')).forEach(o => { o.classList.remove('radio-selected'); o.setAttribute('aria-checked','false'); });
-    optEl.classList.add('radio-selected');
-    optEl.setAttribute('aria-checked','true');
-    ans.selectedOptions = [optId];
-  }
-
-  autoSubmitChoice(question);
 }
 
 /* ── Submit choice answer to API ────────────────────────────────────────────── */
@@ -950,6 +980,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initEntryScreen();
   initNameScreen();
   initFinishButton();
+  initTestClickHandler(); // NEW: global event delegation for options
 
   showScreen('screen-entry');
   $('#session-key-input')?.focus();
