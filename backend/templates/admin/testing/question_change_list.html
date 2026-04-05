@@ -1,0 +1,66 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block object-tools-items %}
+  {# ── Кнопка: Импорт ────────────────────────────────────────────────────── #}
+  <li>
+    <a href="{% url 'testing-import-questions' %}"
+       class="btn-tool btn-import"
+       title="Импорт вопросов из Excel-файла">
+      <i class="fas fa-file-upload"></i>&nbsp; Импорт
+    </a>
+  </li>
+
+  {# ── Кнопка: Экспорт ───────────────────────────────────────────────────── #}
+  <li>
+    <a href="{% url 'testing-export-questions' %}"
+       class="btn-tool btn-export"
+       title="Экспортировать все вопросы в Excel">
+      <i class="fas fa-file-download"></i>&nbsp; Экспорт
+    </a>
+  </li>
+
+  {# ── Кнопка: Шаблон ────────────────────────────────────────────────────── #}
+  <li>
+    <a href="{% url 'testing-download-template' %}"
+       class="btn-tool btn-template"
+       title="Скачать шаблон Excel для заполнения">
+      <i class="fas fa-file-excel"></i>&nbsp; Шаблон
+    </a>
+  </li>
+
+  {# ── Стандартная кнопка «Добавить» ─────────────────────────────────────── #}
+  {{ block.super }}
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+/* ── Кнопки инструментов списка вопросов ──────────────────────────────────── */
+.btn-tool {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 16px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+  color: #fff !important;
+  transition: filter .15s, transform .12s, box-shadow .15s !important;
+  border: none !important;
+  margin-bottom: 2px;
+}
+.btn-import   { background: linear-gradient(135deg, #3b82f6, #2563eb) !important; }
+.btn-export   { background: linear-gradient(135deg, #10b981, #059669) !important; }
+.btn-template { background: linear-gradient(135deg, #f59e0b, #d97706) !important; }
+
+.btn-tool:hover {
+  filter: brightness(1.1) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,.2) !important;
+  color: #fff !important;
+}
+.btn-tool:active { transform: none !important; }
+</style>
+{% endblock %}

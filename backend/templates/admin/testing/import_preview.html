@@ -1,120 +1,305 @@
 {% extends "admin/base_site.html" %}
 {% load i18n %}
 
-{% block title %}Import Preview — {{ block.super }}{% endblock %}
+{% block title %}Предпросмотр импорта — {{ block.super }}{% endblock %}
 
 {% block extrahead %}
 {{ block.super }}
 <style>
-  .preview-table { width:100%; border-collapse:collapse; font-size:13px; }
-  .preview-table th { background:#1f4e79; color:#fff; padding:10px 8px; text-align:left; }
-  .preview-table td { padding:8px; border-bottom:1px solid #e8e8e8; vertical-align:top; }
-  .preview-table tr:hover { background:#f5f8ff; }
-  .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
-  .badge-single   { background:#d1ecf1; color:#0c5460; }
-  .badge-multiple { background:#d4edda; color:#155724; }
-  .badge-text     { background:#fff3cd; color:#856404; }
-  .badge-code     { background:#f8d7da; color:#721c24; }
-  .badge-easy     { background:#d4edda; color:#155724; }
-  .badge-medium   { background:#fff3cd; color:#856404; }
-  .badge-hard     { background:#f8d7da; color:#721c24; }
-  .summary-box  { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
-  .summary-card { background:#fff; border:1px solid #ddd; border-radius:8px; padding:16px 24px; min-width:140px; text-align:center; }
-  .summary-card .num { font-size:28px; font-weight:700; color:#1f4e79; }
-  .summary-card .lbl { font-size:12px; color:#666; margin-top:4px; }
+:root {
+  --clr-primary:  #1f4e79;
+  --clr-accent:   #3b82f6;
+  --clr-success:  #059669;
+  --clr-warning:  #d97706;
+  --clr-danger:   #dc2626;
+  --clr-surface:  #ffffff;
+  --clr-border:   #e2e8f0;
+  --clr-muted:    #64748b;
+  --radius-lg:    14px;
+  --radius-md:    8px;
+  --shadow-card:  0 4px 24px rgba(0,0,0,.07);
+}
+
+/* ── Заголовок ─────────────────────────────────────────────────────────────── */
+.ip-header {
+  display: flex; align-items: center; gap: 14px; margin-bottom: 24px;
+}
+.ip-header-icon {
+  width: 52px; height: 52px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 22px; flex-shrink: 0;
+}
+.ip-header-icon.ok    { background: linear-gradient(135deg, #10b981, #059669); }
+.ip-header-icon.error { background: linear-gradient(135deg, #f87171, #dc2626); }
+.ip-header h1 { margin: 0; font-size: 22px; font-weight: 700; color: var(--clr-primary); }
+.ip-header p  { margin: 4px 0 0; font-size: 14px; color: var(--clr-muted); }
+
+/* ── Статистические карточки ───────────────────────────────────────────────── */
+.ip-stats {
+  display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px;
+}
+.ip-stat-card {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  padding: 18px 24px; min-width: 130px; text-align: center;
+  box-shadow: var(--shadow-card);
+}
+.ip-stat-num {
+  font-size: 32px; font-weight: 800; line-height: 1;
+  color: var(--clr-primary);
+}
+.ip-stat-num.danger  { color: var(--clr-danger); }
+.ip-stat-num.success { color: var(--clr-success); }
+.ip-stat-lbl {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase;
+  color: var(--clr-muted); margin-top: 6px;
+}
+
+/* ── Тесты в файле ─────────────────────────────────────────────────────────── */
+.ip-tests-box {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px; margin-bottom: 20px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  box-shadow: var(--shadow-card);
+}
+.ip-tests-box strong { font-size: 13px; color: var(--clr-primary); white-space: nowrap; }
+.ip-test-badge {
+  background: #eff6ff; color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+}
+
+/* ── Блок ошибок ───────────────────────────────────────────────────────────── */
+.ip-errors {
+  background: #fef2f2; border: 1px solid #fecaca;
+  border-left: 4px solid var(--clr-danger);
+  border-radius: var(--radius-md);
+  padding: 18px 20px; margin-bottom: 24px;
+  box-shadow: var(--shadow-card);
+}
+.ip-errors h2 {
+  margin: 0 0 12px; font-size: 15px; font-weight: 700;
+  color: var(--clr-danger); display: flex; align-items: center; gap: 8px;
+}
+.ip-errors ul { margin: 0; padding-left: 20px; }
+.ip-errors li { padding: 3px 0; font-size: 13px; color: #7f1d1d; }
+
+/* ── Таблица предпросмотра ─────────────────────────────────────────────────── */
+.ip-table-wrap {
+  overflow-x: auto;
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  margin-bottom: 28px;
+}
+.ip-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.ip-table thead th {
+  background: var(--clr-primary); color: #fff;
+  padding: 11px 12px; text-align: left;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.ip-table thead th:first-child { border-radius: 0; }
+.ip-table tbody tr:hover td { background: #f8fafc; }
+.ip-table td {
+  padding: 9px 12px; border-bottom: 1px solid var(--clr-border); vertical-align: top;
+}
+.ip-table tbody tr:last-child td { border-bottom: none; }
+
+/* ── Бейджи типов / сложности ──────────────────────────────────────────────── */
+.badge {
+  display: inline-block; padding: 2px 9px; border-radius: 12px;
+  font-size: 11px; font-weight: 700;
+}
+.b-single   { background: #dbeafe; color: #1d4ed8; }
+.b-multiple { background: #ede9fe; color: #5b21b6; }
+.b-text     { background: #fef3c7; color: #92400e; }
+.b-code     { background: #fee2e2; color: #991b1b; }
+.b-easy     { background: #d1fae5; color: #065f46; }
+.b-medium   { background: #fef3c7; color: #92400e; }
+.b-hard     { background: #fee2e2; color: #991b1b; }
+.b-correct  { background: #d1fae5; color: #065f46; }
+
+.opt-list { margin: 0; padding: 0; list-style: none; }
+.opt-list li { font-size: 12px; color: #374151; padding: 1px 0; }
+.opt-list li.correct { color: var(--clr-success); font-weight: 600; }
+.opt-list li.correct::before { content: '✓ '; }
+
+/* ── Кнопки действий ───────────────────────────────────────────────────────── */
+.ip-actions {
+  display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+  padding: 20px 24px;
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+.ip-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 11px 24px; border-radius: var(--radius-md);
+  font-size: 14px; font-weight: 700;
+  cursor: pointer; border: none;
+  text-decoration: none !important;
+  transition: filter .15s, transform .12s, box-shadow .15s;
+  color: #fff !important;
+}
+.ip-btn:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,.18); }
+.ip-btn:active { transform: none; }
+.ip-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; filter: none; }
+
+.ip-btn-confirm { background: linear-gradient(135deg, #10b981, #059669); }
+.ip-btn-reup    { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.ip-btn-cancel  { background: linear-gradient(135deg, #64748b, #475569); }
+
+.ip-warning-note {
+  font-size: 12px; color: var(--clr-muted);
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 12px; background: #fefce8;
+  border: 1px solid #fde047; border-radius: var(--radius-md);
+}
+
+/* ── Spinner ────────────────────────────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.fa-spin { animation: spin .8s linear infinite; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="content-header">
-  <h1>Import Preview</h1>
-  {% if preview.is_valid %}
-    <p class="help" style="color:#155724;">File is valid. Review below, then confirm.</p>
-  {% else %}
-    <p class="help" style="color:#721c24;">{{ preview.errors|length }} validation error(s) found. Fix the file and re-upload.</p>
-  {% endif %}
-</div>
 
-<div class="summary-box">
-  <div class="summary-card">
-    <div class="num">{{ preview.rows|length }}</div>
-    <div class="lbl">Questions</div>
+{% with errs=preview.errors rows=preview.rows %}
+
+{# ── Заголовок страницы ─────────────────────────────────────────────────────── #}
+<div class="ip-header">
+  <div class="ip-header-icon {% if preview.is_valid %}ok{% else %}error{% endif %}">
+    <i class="fas {% if preview.is_valid %}fa-check{% else %}fa-exclamation-triangle{% endif %}"></i>
   </div>
-  <div class="summary-card">
-    <div class="num">{{ preview.test_titles|length }}</div>
-    <div class="lbl">Tests</div>
-  </div>
-  <div class="summary-card">
-    <div class="num">{{ preview.errors|length }}</div>
-    <div class="lbl" {% if preview.errors %}style="color:#c0392b;"{% endif %}>Errors</div>
+  <div>
+    <h1>Предпросмотр данных</h1>
+    {% if preview.is_valid %}
+      <p>Файл прошёл проверку. Проверьте данные и подтвердите импорт.</p>
+    {% else %}
+      <p style="color:var(--clr-danger);">Обнаружено ошибок: {{ errs|length }}. Исправьте файл и загрузите повторно.</p>
+    {% endif %}
   </div>
 </div>
 
+{# ── Карточки статистики ────────────────────────────────────────────────────── #}
+<div class="ip-stats">
+  <div class="ip-stat-card">
+    <div class="ip-stat-num">{{ rows|length }}</div>
+    <div class="ip-stat-lbl">Вопросов</div>
+  </div>
+  <div class="ip-stat-card">
+    <div class="ip-stat-num">{{ preview.test_titles|length }}</div>
+    <div class="ip-stat-lbl">Тестов</div>
+  </div>
+  <div class="ip-stat-card">
+    <div class="ip-stat-num">{{ preview.total_options }}</div>
+    <div class="ip-stat-lbl">Вариантов</div>
+  </div>
+  <div class="ip-stat-card">
+    <div class="ip-stat-num {% if errs %}danger{% else %}success{% endif %}">{{ errs|length }}</div>
+    <div class="ip-stat-lbl">Ошибок</div>
+  </div>
+</div>
+
+{# ── Список тестов в файле ─────────────────────────────────────────────────── #}
 {% if preview.test_titles %}
-<div class="module" style="padding:16px; margin-bottom:16px;">
-  <strong>Tests:</strong>
+<div class="ip-tests-box">
+  <strong><i class="fas fa-book-open"></i>&nbsp; Тесты в файле:</strong>
   {% for t in preview.test_titles %}
-    <span class="badge badge-single" style="margin:2px;">{{ t }}</span>
+    <span class="ip-test-badge">{{ t }}</span>
   {% endfor %}
 </div>
 {% endif %}
 
-{% if preview.errors %}
-<div class="module" style="padding:16px; background:#fff8f8; border-left:4px solid #c0392b; margin-bottom:20px;">
-  <h2 style="color:#c0392b;">Validation Errors</h2>
+{# ── Блок ошибок ───────────────────────────────────────────────────────────── #}
+{% if errs %}
+<div class="ip-errors">
+  <h2>
+    <i class="fas fa-times-circle"></i>
+    Ошибки валидации ({{ errs|length }})
+  </h2>
   <ul>
-    {% for err in preview.errors %}
+    {% for err in errs %}
       <li>{{ err }}</li>
     {% endfor %}
   </ul>
-  <a href="{% url 'testing-import-questions' %}" class="button default" style="margin-top:12px;">
-    Re-upload File
-  </a>
 </div>
 {% endif %}
 
-{% if preview.rows %}
-<div class="module" style="overflow-x:auto; margin-bottom:24px;">
-  <table class="preview-table">
+{# ── Таблица предпросмотра ─────────────────────────────────────────────────── #}
+{% if rows %}
+<div class="ip-table-wrap">
+  <table class="ip-table">
     <thead>
       <tr>
-        <th>#</th>
-        <th>Test</th>
-        <th>Question</th>
-        <th>Type</th>
-        <th>Difficulty</th>
-        <th>Options</th>
-        <th>Correct</th>
+        <th style="width:44px;">#</th>
+        <th>Тест</th>
+        <th>Вопрос</th>
+        <th>Тип</th>
+        <th>Сложность</th>
+        <th>Варианты ответов</th>
+        <th>Правильные</th>
       </tr>
     </thead>
     <tbody>
-      {% for row in preview.rows %}
+      {% for row in rows %}
       <tr>
-        <td style="color:#999;">{{ row.row_number }}</td>
+        <td style="color:var(--clr-muted); text-align:center;">{{ row.row_number }}</td>
         <td><strong>{{ row.test_title }}</strong></td>
-        <td>{{ row.question_text|truncatechars:80 }}</td>
+        <td style="max-width:280px;">{{ row.question_text|truncatechars:90 }}</td>
         <td>
           <span class="badge
-            {% if row.question_type == 'single_choice' %}badge-single
-            {% elif row.question_type == 'multiple_choice' %}badge-multiple
-            {% elif row.question_type == 'text' %}badge-text
-            {% else %}badge-code{% endif %}
-          ">
-            {{ row.question_type }}{% if row.language %} ({{ row.language }}){% endif %}
+            {% if row.question_type == 'single_choice' %}b-single
+            {% elif row.question_type == 'multiple_choice' %}b-multiple
+            {% elif row.question_type == 'text' %}b-text
+            {% else %}b-code
+            {% endif %}">
+            {% if row.question_type == 'single_choice' %}Один
+            {% elif row.question_type == 'multiple_choice' %}Несколько
+            {% elif row.question_type == 'text' %}Текст
+            {% else %}Код{% endif %}
+          </span>
+          {% if row.language %}
+            <br><span style="font-size:11px; color:var(--clr-muted);">{{ row.language }}</span>
+          {% endif %}
+        </td>
+        <td>
+          <span class="badge b-{{ row.difficulty }}">
+            {% if row.difficulty == 'easy' %}Лёгкий
+            {% elif row.difficulty == 'medium' %}Средний
+            {% else %}Сложный{% endif %}
           </span>
         </td>
         <td>
-          <span class="badge badge-{{ row.difficulty }}">{{ row.difficulty }}</span>
-        </td>
-        <td>
-          {% for opt in row.options %}
-            <div>{{ forloop.counter }}. {{ opt|truncatechars:40 }}</div>
-          {% empty %}—{% endfor %}
+          {% if row.options %}
+            <ul class="opt-list">
+              {% for opt in row.options %}
+                <li {% if forloop.counter0 in row.correct_indices %}class="correct"{% endif %}>
+                  {{ forloop.counter }}. {{ opt|truncatechars:45 }}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <span style="color:var(--clr-muted);">—</span>
+          {% endif %}
         </td>
         <td>
           {% for idx in row.correct_indices %}
-            <span class="badge" style="background:#d4edda;color:#155724;">{{ idx|add:1 }}</span>
-          {% empty %}—{% endfor %}
+            <span class="badge b-correct">{{ idx|add:1 }}</span>&nbsp;
+          {% empty %}
+            <span style="color:var(--clr-muted);">—</span>
+          {% endfor %}
         </td>
       </tr>
       {% endfor %}
@@ -123,20 +308,46 @@
 </div>
 {% endif %}
 
-<div style="display:flex; gap:12px; flex-wrap:wrap;">
+{# ── Кнопки действий ───────────────────────────────────────────────────────── #}
+<div class="ip-actions">
   {% if preview.is_valid %}
-    <form method="post" action="{% url 'testing-confirm-import' %}">
+    <form method="post" action="{% url 'testing-confirm-import' %}" id="confirm-form">
       {% csrf_token %}
-      <button type="submit" class="button default" style="padding:12px 28px; font-size:15px;">
-        Confirm Import ({{ preview.rows|length }} questions)
+      <button type="submit" class="ip-btn ip-btn-confirm" id="confirm-btn">
+        <i class="fas fa-check-circle"></i>
+        Подтвердить импорт ({{ rows|length }} вопросов)
       </button>
     </form>
   {% endif %}
-  <a href="{% url 'testing-import-questions' %}" class="button" style="padding:12px 20px;">
-    Re-upload
+
+  <a href="{% url 'testing-import-questions' %}" class="ip-btn ip-btn-reup">
+    <i class="fas fa-redo"></i> Загрузить другой файл
   </a>
-  <a href="{% url 'testing-download-template' %}" class="button" style="padding:12px 20px;">
-    Download Template
+
+  <a href="{% url 'admin:testing_question_changelist' %}" class="ip-btn ip-btn-cancel">
+    <i class="fas fa-times"></i> Отмена
   </a>
+
+  {% if not preview.is_valid %}
+    <div class="ip-warning-note">
+      <i class="fas fa-lock"></i>
+      Кнопка «Подтвердить» недоступна — исправьте ошибки в файле.
+    </div>
+  {% endif %}
 </div>
+
+{% endwith %}
+
+<script>
+(function () {
+  const form = document.getElementById('confirm-form');
+  const btn  = document.getElementById('confirm-btn');
+  if (form && btn) {
+    form.addEventListener('submit', function () {
+      btn.disabled  = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Импортируем...';
+    });
+  }
+})();
+</script>
 {% endblock %}

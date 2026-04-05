@@ -1,11 +1,7 @@
 """
-admin.py — Testing app with django-import-export on every model.
-
-Inheritance order (critical):
-    ImportExportModelAdmin FIRST, NestedModelAdmin SECOND
-    → resolves change_list_template MRO conflict
-
-Bootstrap Icons used throughout (Jazzmin loads Bootstrap Icons by default).
+admin.py — Testing app.
+QuestionAdmin получает кастомные кнопки Импорт / Экспорт / Шаблон
+через change_list_template override.
 """
 
 from __future__ import annotations
@@ -13,7 +9,7 @@ from __future__ import annotations
 import nested_admin
 from django.contrib import admin, messages
 from django.db.models import Count
-from django.urls import reverse
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 
@@ -27,6 +23,7 @@ from .resources import (
 )
 
 
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _badge(text: str, color: str) -> str:
     return format_html(
@@ -37,20 +34,11 @@ def _badge(text: str, color: str) -> str:
     )
 
 
-DIFFICULTY_COLORS = {
-    'easy':   '#2ecc71',
-    'medium': '#f39c12',
-    'hard':   '#e74c3c',
-}
-
+DIFFICULTY_COLORS = {'easy': '#2ecc71', 'medium': '#f39c12', 'hard': '#e74c3c'}
 STATUS_COLORS = {
-    'created':  '#3498db',
-    'running':  '#27ae60',
-    'finished': '#7f8c8d',
-    'active':   '#27ae60',
-    'expired':  '#e74c3c',
+    'created': '#3498db', 'running': '#27ae60', 'finished': '#7f8c8d',
+    'active':  '#27ae60', 'expired': '#e74c3c',
 }
-
 CHOICE_TYPES = {QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE}
 
 
@@ -86,14 +74,14 @@ class QuestionOptionInline(admin.TabularInline):
 
 
 class AnswerInline(admin.TabularInline):
-    model           = Answer
-    extra           = 0
-    can_delete      = False
-    max_num         = 0
+    model               = Answer
+    extra               = 0
+    can_delete          = False
+    max_num             = 0
     verbose_name        = 'Ответ пользователя'
     verbose_name_plural = 'Ответы пользователя'
-    readonly_fields = ['question_display', 'answer_display', 'correctness_badge', 'answered_at']
-    fields          = ['question_display', 'answer_display', 'correctness_badge', 'answered_at']
+    readonly_fields     = ['question_display', 'answer_display', 'correctness_badge', 'answered_at']
+    fields              = ['question_display', 'answer_display', 'correctness_badge', 'answered_at']
 
     def question_display(self, obj):
         return obj.question.text[:80] if obj and obj.question_id else '—'
@@ -144,11 +132,7 @@ class AttemptInline(admin.TabularInline):
 # ── Test ──────────────────────────────────────────────────────────────────────
 
 @admin.register(Test)
-class TestAdmin( nested_admin.NestedModelAdmin):
-    """
-    ImportExportModelAdmin FIRST so its change_list_template wins.
-    nested_admin.NestedModelAdmin SECOND for nested inline JS.
-    """
+class TestAdmin(nested_admin.NestedModelAdmin):
     resource_classes = [TestResource]
     list_display     = ['title', 'level_badge', 'active_badge', 'question_count_display', 'created_at']
     list_filter      = ['level', 'is_active']
@@ -163,9 +147,6 @@ class TestAdmin( nested_admin.NestedModelAdmin):
             'classes': ['collapse'],
         }),
     ]
-
-    # ImportExportModelAdmin sets change_list_template = 'admin/import_export/change_list.html'
-    # That template includes import/export buttons — do NOT override it here.
 
     def get_queryset(self, request):
         return super().get_queryset(request).annotate(_qcount=Count('questions'))
@@ -193,7 +174,9 @@ class TestAdmin( nested_admin.NestedModelAdmin):
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    resource_classes = [QuestionResource]
+    resource_classes       = [QuestionResource]
+    change_list_template   = 'admin/testing/question_change_list.html'
+
     list_display     = [
         'short_text', 'test_link', 'type_badge', 'difficulty_badge',
         'language', 'order', 'options_link',
@@ -305,7 +288,6 @@ class QuestionOptionAdmin(admin.ModelAdmin):
 
 @admin.register(TestSession)
 class TestSessionAdmin(admin.ModelAdmin):
-    """Export-only — sessions must not be created via spreadsheet import."""
     resource_classes    = [TestSessionResource]
     list_display        = [
         'session_label', 'test_link', 'status_badge', 'valid_indicator',
@@ -315,7 +297,7 @@ class TestSessionAdmin(admin.ModelAdmin):
     search_fields       = ['key', 'title', 'test__title']
     ordering            = ['-created_at']
     inlines             = [AttemptInline]
-    actions             = ['force_expire', 'export_admin_action']
+    actions             = ['force_expire']
     readonly_fields     = [
         'id', 'key', 'created_at', 'expires_at',
         'valid_indicator', 'expires_display', 'attempts_display',
@@ -396,7 +378,6 @@ class TestSessionAdmin(admin.ModelAdmin):
 
 @admin.register(StudentAttempt)
 class StudentAttemptAdmin(admin.ModelAdmin):
-    """Export-only — attempts are created by students, never imported."""
     resource_classes = [StudentAttemptResource]
     list_display     = [
         'student_name', 'test_title', 'session_link', 'status_badge',
@@ -461,7 +442,6 @@ class StudentAttemptAdmin(admin.ModelAdmin):
 
 @admin.register(Answer)
 class AnswerAdmin(admin.ModelAdmin):
-    """Export-only — answers are submitted by students, never imported."""
     resource_classes = [AnswerResource]
     list_display     = ['student_name', 'question_short', 'answer_preview', 'correctness_badge', 'answered_at']
     list_filter      = ['is_correct', 'question__question_type']
@@ -501,8 +481,6 @@ class AnswerAdmin(admin.ModelAdmin):
     correctness_badge.short_description = 'Результат'
     correctness_badge.admin_order_field = 'is_correct'
 
-
-# ── Unregister default auth models ───────────────────────────────────────────
 
 from django.contrib.auth.models import Group, User  # noqa: E402
 
