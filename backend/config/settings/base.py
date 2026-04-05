@@ -29,7 +29,6 @@ THIRD_PARTY_APPS = [
     'corsheaders',
     'drf_spectacular',
     'django_filters',
-    'import_export',
 ]
 
 LOCAL_APPS: list[str] = [

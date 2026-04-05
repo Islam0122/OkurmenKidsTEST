@@ -16,7 +16,6 @@ from django.db.models import Count
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
-from import_export.admin import ImportExportModelAdmin, ExportActionModelAdmin
 
 from .models import (
     Answer, AttemptStatus, Question, QuestionOption,
@@ -28,7 +27,6 @@ from .resources import (
 )
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _badge(text: str, color: str) -> str:
     return format_html(
@@ -146,7 +144,7 @@ class AttemptInline(admin.TabularInline):
 # ── Test ──────────────────────────────────────────────────────────────────────
 
 @admin.register(Test)
-class TestAdmin(ImportExportModelAdmin, nested_admin.NestedModelAdmin):
+class TestAdmin( nested_admin.NestedModelAdmin):
     """
     ImportExportModelAdmin FIRST so its change_list_template wins.
     nested_admin.NestedModelAdmin SECOND for nested inline JS.
@@ -194,7 +192,7 @@ class TestAdmin(ImportExportModelAdmin, nested_admin.NestedModelAdmin):
 # ── Question ──────────────────────────────────────────────────────────────────
 
 @admin.register(Question)
-class QuestionAdmin(ImportExportModelAdmin):
+class QuestionAdmin(admin.ModelAdmin):
     resource_classes = [QuestionResource]
     list_display     = [
         'short_text', 'test_link', 'type_badge', 'difficulty_badge',
@@ -280,7 +278,7 @@ class QuestionAdmin(ImportExportModelAdmin):
 # ── QuestionOption ────────────────────────────────────────────────────────────
 
 @admin.register(QuestionOption)
-class QuestionOptionAdmin(ImportExportModelAdmin):
+class QuestionOptionAdmin(admin.ModelAdmin):
     resource_classes = [QuestionOptionResource]
     list_display  = ['text_short', 'question_link', 'correct_badge', 'order']
     list_filter   = ['is_correct', 'question__question_type']
@@ -306,7 +304,7 @@ class QuestionOptionAdmin(ImportExportModelAdmin):
 # ── TestSession ───────────────────────────────────────────────────────────────
 
 @admin.register(TestSession)
-class TestSessionAdmin(ExportActionModelAdmin):
+class TestSessionAdmin(admin.ModelAdmin):
     """Export-only — sessions must not be created via spreadsheet import."""
     resource_classes    = [TestSessionResource]
     list_display        = [
@@ -397,7 +395,7 @@ class TestSessionAdmin(ExportActionModelAdmin):
 # ── StudentAttempt ────────────────────────────────────────────────────────────
 
 @admin.register(StudentAttempt)
-class StudentAttemptAdmin(ExportActionModelAdmin):
+class StudentAttemptAdmin(admin.ModelAdmin):
     """Export-only — attempts are created by students, never imported."""
     resource_classes = [StudentAttemptResource]
     list_display     = [
@@ -462,7 +460,7 @@ class StudentAttemptAdmin(ExportActionModelAdmin):
 # ── Answer ────────────────────────────────────────────────────────────────────
 
 @admin.register(Answer)
-class AnswerAdmin(ExportActionModelAdmin):
+class AnswerAdmin(admin.ModelAdmin):
     """Export-only — answers are submitted by students, never imported."""
     resource_classes = [AnswerResource]
     list_display     = ['student_name', 'question_short', 'answer_preview', 'correctness_badge', 'answered_at']
