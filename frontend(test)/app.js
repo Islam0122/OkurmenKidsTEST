@@ -340,51 +340,116 @@ function renderCurrentQuestion() {
   }
 
   let body = '';
-  if (q.question_type === 'single_choice' || q.question_type === 'multiple_choice') {
-    const opts = (q.options || []);
-    const isMulti = q.question_type === 'multiple_choice';
-    const selected = new Set(ans.selectedOptions || []);
-    const letters  = 'ABCDEFGHIJ';
 
+  if (q.question_type === 'single_choice') {
+    // ── RADIO — один ответ ───────────────────────────────────────────────
+    const opts     = q.options || [];
+    const selected = new Set(ans.selectedOptions || []);
     body = `
-      ${isMulti ? `<p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;"><svg style="width:12px;height:12px;vertical-align:middle;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg> Можно выбрать несколько вариантов</p>` : ''}
-      <div class="options-list">
-        ${opts.map((opt, i) => `
-          <div class="option-item ${isMulti ? 'multi' : ''} ${selected.has(opt.id) ? 'selected' : ''}"
-               data-opt-id="${opt.id}"
-               role="${isMulti ? 'checkbox' : 'radio'}"
-               aria-checked="${selected.has(opt.id)}"
-               tabindex="0">
-            <div class="option-marker">
-              <span class="letter-lbl">${letters[i] || i + 1}</span>
-              <svg class="check-icon" style="width:12px;height:12px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
-            </div>
-            <div class="option-text">${escapeHtml(opt.text)}</div>
-          </div>
-        `).join('')}
+      <div class="answer-type-hint hint-radio">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+        Выберите один ответ
+      </div>
+      <div class="options-list" role="radiogroup">
+        ${opts.map((opt, i) => {
+          const isSelected = selected.has(opt.id);
+          return `
+            <label class="option-item option-radio ${isSelected ? 'selected' : ''}" data-opt-id="${opt.id}" tabindex="0">
+              <span class="ctrl-radio">
+                <span class="ctrl-radio-dot"></span>
+              </span>
+              <span class="opt-letter">${'ABCDEFGHIJ'[i] || i+1}</span>
+              <span class="option-text">${escapeHtml(opt.text)}</span>
+            </label>`;
+        }).join('')}
       </div>
       ${resultPill}
     `;
-  } else {
-    // text or code
-    const isCode = q.question_type === 'code';
-    const langHint = isCode && q.language ? `
-      <div class="code-lang-hint">
-        <svg style="width:12px;height:12px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-        <span class="code-lang-badge">${q.language}</span>
-      </div>` : '';
 
+  } else if (q.question_type === 'multiple_choice') {
+    // ── CHECKBOX — несколько ответов ─────────────────────────────────────
+    const opts     = q.options || [];
+    const selected = new Set(ans.selectedOptions || []);
     body = `
-      ${langHint}
+      <div class="answer-type-hint hint-checkbox">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12l2 2 4-4"/></svg>
+        Выберите все подходящие варианты
+      </div>
+      <div class="options-list" role="group">
+        ${opts.map((opt, i) => {
+          const isSelected = selected.has(opt.id);
+          return `
+            <label class="option-item option-checkbox ${isSelected ? 'selected' : ''}" data-opt-id="${opt.id}" tabindex="0">
+              <span class="ctrl-checkbox">
+                <svg class="ctrl-checkmark" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 6l3 3 5-5"/></svg>
+              </span>
+              <span class="opt-letter">${'ABCDEFGHIJ'[i] || i+1}</span>
+              <span class="option-text">${escapeHtml(opt.text)}</span>
+            </label>`;
+        }).join('')}
+      </div>
+      ${resultPill}
+    `;
+
+  } else if (q.question_type === 'text') {
+    // ── TEXT — свободный ответ ───────────────────────────────────────────
+    body = `
+      <div class="answer-type-hint hint-text">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Развёрнутый ответ в свободной форме
+      </div>
       <textarea
-        class="text-answer-area ${isCode ? 'code-mode' : ''}"
-        placeholder="${isCode ? `// Введите код на ${q.language || 'коде'}...` : 'Введите ваш ответ...'}"
+        class="text-answer-area"
+        placeholder="Введите ваш ответ здесь..."
         id="text-answer-textarea"
-        rows="6"
+        rows="7"
       >${escapeHtml(ans.answerText || '')}</textarea>
-      <div class="submit-hint">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        Ответ сохраняется автоматически при переходе
+      <div class="textarea-footer">
+        <span class="char-counter" id="char-counter">0 символов</span>
+        <span class="submit-hint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Сохраняется при переходе
+        </span>
+      </div>
+      ${resultPill}
+    `;
+
+  } else if (q.question_type === 'code') {
+    // ── CODE — редактор кода ─────────────────────────────────────────────
+    const lang = q.language || 'code';
+    body = `
+      <div class="code-editor-wrap">
+        <div class="code-editor-bar">
+          <div class="code-editor-dots">
+            <span class="ced-dot red"></span>
+            <span class="ced-dot yellow"></span>
+            <span class="ced-dot green"></span>
+          </div>
+          <span class="code-editor-lang">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            ${escapeHtml(lang)}
+          </span>
+          <button class="code-copy-btn" id="code-copy-btn" title="Копировать код">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Копировать
+          </button>
+        </div>
+        <textarea
+          class="text-answer-area code-mode"
+          placeholder="// Введите ваш код здесь..."
+          id="text-answer-textarea"
+          rows="10"
+          spellcheck="false"
+          autocorrect="off"
+          autocapitalize="off"
+        >${escapeHtml(ans.answerText || '')}</textarea>
+      </div>
+      <div class="textarea-footer">
+        <span class="char-counter" id="char-counter">0 строк</span>
+        <span class="submit-hint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Сохраняется при переходе
+        </span>
       </div>
       ${resultPill}
     `;
@@ -400,24 +465,71 @@ function renderCurrentQuestion() {
     ${body}
   `;
 
-  // Bind option clicks
+  // Bind option clicks — radio & checkbox labels
   if (q.question_type === 'single_choice' || q.question_type === 'multiple_choice') {
     const isMulti = q.question_type === 'multiple_choice';
     card.querySelectorAll('.option-item').forEach(item => {
-      const handler = () => handleOptionClick(item, q, isMulti);
+      const handler = (e) => {
+        e.preventDefault();
+        handleOptionClick(item, q, isMulti);
+      };
       item.addEventListener('click', handler);
-      item.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); handler(); } });
+      item.addEventListener('keydown', e => {
+        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); handleOptionClick(item, q, isMulti); }
+      });
     });
   }
 
-  // Textarea auto-save on blur/change
+  // Textarea: text / code
   const textarea = $('#text-answer-textarea');
   if (textarea) {
-    textarea.addEventListener('blur', () => saveTextAnswer(q));
+    const counter = $('#char-counter');
+
+    const updateCounter = () => {
+      if (!counter) return;
+      if (q.question_type === 'code') {
+        const lines = textarea.value.split('\n').length;
+        counter.textContent = `${lines} ${lines === 1 ? 'строка' : 'строк'}`;
+      } else {
+        counter.textContent = `${textarea.value.length} символов`;
+      }
+    };
+    updateCounter();
+
     textarea.addEventListener('input', () => {
-      // Mark as dirty
       if (!state.answers[q.id]) state.answers[q.id] = {};
       state.answers[q.id].answerText = textarea.value;
+      updateCounter();
+    });
+    textarea.addEventListener('blur', () => saveTextAnswer(q));
+
+    // Tab indent in code mode
+    if (q.question_type === 'code') {
+      textarea.addEventListener('keydown', e => {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const s = textarea.selectionStart;
+          const v = textarea.value;
+          textarea.value = v.slice(0, s) + '  ' + v.slice(textarea.selectionEnd);
+          textarea.selectionStart = textarea.selectionEnd = s + 2;
+          if (!state.answers[q.id]) state.answers[q.id] = {};
+          state.answers[q.id].answerText = textarea.value;
+        }
+      });
+    }
+  }
+
+  // Code copy button
+  const copyBtn = $('#code-copy-btn');
+  if (copyBtn && textarea) {
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(textarea.value);
+        copyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M20 6L9 17l-5-5"/></svg> Скопировано`;
+        setTimeout(() => {
+          copyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Копировать`;
+        }, 1500);
+      } catch {}
     });
   }
 
@@ -463,6 +575,7 @@ function handleOptionClick(item, question, isMulti) {
   const ans = state.answers[question.id];
 
   if (isMulti) {
+    // CHECKBOX — toggle
     const set = new Set(ans.selectedOptions || []);
     if (set.has(optId)) {
       set.delete(optId);
@@ -473,13 +586,12 @@ function handleOptionClick(item, question, isMulti) {
     }
     ans.selectedOptions = [...set];
   } else {
-    // Single: deselect all, select this
+    // RADIO — deselect all, select this one only
     $('#question-card').querySelectorAll('.option-item').forEach(i => i.classList.remove('selected'));
     item.classList.add('selected');
     ans.selectedOptions = [optId];
   }
 
-  item.setAttribute('aria-checked', item.classList.contains('selected'));
   autoSubmitAnswer(question);
 }
 
