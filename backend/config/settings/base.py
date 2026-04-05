@@ -284,3 +284,4 @@ JAZZMIN_SETTINGS = {
 IMPORT_EXPORT_USE_TRANSACTIONS = True      # wrap import in DB transaction
 IMPORT_EXPORT_SKIP_ADMIN_LOG   = False     # log every imported row (default)
 IMPORT_EXPORT_CHUNK_SIZE       = 100
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
