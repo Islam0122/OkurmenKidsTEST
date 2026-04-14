@@ -560,7 +560,15 @@ from django.contrib.auth.models import Group, User  # noqa: E402
 from django.contrib import admin
 from django_celery_beat.models import CrontabSchedule
 from django_celery_beat.models import IntervalSchedule, SolarSchedule
+from django_celery_beat.models import ClockedSchedule
+from django_celery_beat.models import PeriodicTask
+from django_celery_results.models import TaskResult
+from django_celery_results.models import GroupResult
 
+admin.site.unregister(GroupResult)
+admin.site.unregister(TaskResult)
+admin.site.unregister(PeriodicTask)
+admin.site.unregister(ClockedSchedule)
 admin.site.unregister(IntervalSchedule)
 admin.site.unregister(SolarSchedule)
 admin.site.unregister(CrontabSchedule)
