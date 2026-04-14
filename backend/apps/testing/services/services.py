@@ -149,22 +149,34 @@ class AttemptService:
     @staticmethod
     def start_attempt(key: str, student_name: str) -> AttemptStartResult:
         _, _, StudentAttempt, _, _, _, AttemptStatus, SessionStatus, *_ = _models()
+
         student_name = student_name.strip()
         if not student_name:
             raise ValidationError('student_name is required.')
 
         session = SessionService.validate_session(key)
 
-        if not session.can_student_attempt(student_name):
-            raise ValidationError(
-                f'Student "{student_name}" has reached the attempt limit for this session.'
-            )
+        # 🔥 EXAM RULE: only 1 attempt per student
+        if session.session_type == "exam":
+            exists = StudentAttempt.objects.filter(
+                session=session,
+                student_name=student_name,
+                status__in=["active", "finished"]
+            ).exists()
+
+            if exists:
+                raise ValidationError(
+                    f'Student "{student_name}" already has attempt in this EXAM session.'
+                )
+
+        # TRAINING → no limit (ничего не делаем)
 
         with transaction.atomic():
             attempt = StudentAttempt.objects.create(
                 session=session,
                 student_name=student_name,
             )
+
             if session.status == SessionStatus.CREATED:
                 session.status = SessionStatus.RUNNING
                 session.save(update_fields=['status'])
@@ -173,6 +185,7 @@ class AttemptService:
             'Attempt %s started by "%s" [session_type=%s]',
             attempt.id, student_name, session.session_type,
         )
+
         return AttemptStartResult(
             attempt_id=str(attempt.id),
             student_name=student_name,
