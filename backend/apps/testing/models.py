@@ -292,15 +292,6 @@ class StudentAttempt(models.Model):
             models.Index(fields=['session', 'student_name'], name='attempt_session_student_idx'),
             models.Index(fields=['status', 'started_at'],    name='attempt_status_started_idx'),
         ]
-        constraints = [
-            # Для exam: один студент = одна попытка в рамках сессии.
-            # Для training UniqueConstraint снимается через condition.
-            models.UniqueConstraint(
-                fields=['session', 'student_name'],
-                condition=models.Q(status__in=['active', 'finished']),
-                name='unique_active_attempt_per_student_per_session',
-            ),
-        ]
 
     def __str__(self):
         return f'{self.student_name} → {self.session}'
