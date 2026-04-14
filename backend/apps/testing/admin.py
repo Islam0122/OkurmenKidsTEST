@@ -18,7 +18,10 @@ from .resources import (
     AnswerResource, QuestionOptionResource, QuestionResource,
     StudentAttemptResource, TestResource, TestSessionResource,
 )
+from django.db.models import Count, Avg, Q
+from django.utils.html import format_html
 
+PASS_SCORE = 75
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -142,6 +145,7 @@ class AttemptInline(admin.TabularInline):
             return '—'
         return _badge(obj.get_status_display(), STATUS_COLORS.get(obj.status, '#7f8c8d'))
     status_badge.short_description = 'Статус'
+
 
     def score_display(self, obj):
         # if not obj or not obj.is_finished:
@@ -323,7 +327,8 @@ class TestSessionAdmin(admin.ModelAdmin):
     actions          = ['force_expire']
     readonly_fields  = [
         'id', 'key', 'created_at', 'expires_at',
-        'valid_indicator', 'expires_display', 'attempts_display',
+        'valid_indicator', 'expires_display',
+        'attempts_display','kpi_summary',
     ]
     fieldsets = [
         ('Сессия', {
@@ -335,7 +340,103 @@ class TestSessionAdmin(admin.ModelAdmin):
         }),
         ('Время',   {'fields': ['created_at', 'expires_at', 'valid_indicator', 'expires_display']}),
         ('Попытки', {'fields': ['attempts_display']}),
+        ('KPI', {
+            'fields': ['kpi_summary']
+        }),
     ]
+
+    def kpi_summary(self, obj):
+        if not obj or not obj.pk:
+            return "—"
+
+        stats = obj.attempts.filter(
+            status='finished'
+        ).aggregate(
+            total=Count('id'),
+            passed=Count('id', filter=Q(score__gte=PASS_SCORE)),
+            failed=Count('id', filter=Q(score__lt=PASS_SCORE)),
+            avg=Avg('score')
+        )
+
+        total = stats['total'] or 0
+        passed = stats['passed'] or 0
+        failed = stats['failed'] or 0
+        avg = round(stats['avg'] or 0, 2)
+
+        percent = round((passed / total) * 100, 1) if total > 0 else 0
+
+        color = '#dc2626' if percent < 50 else '#f59e0b' if percent < 75 else '#16a34a'
+
+        return format_html(
+            '''
+            <div style="
+                background:#ffffff;
+                border:1px solid #e5e7eb;
+                border-radius:10px;
+                padding:14px;
+                max-width:340px;
+            ">
+                <div style="font-size:12px; color:#9ca3af; margin-bottom:6px;">
+                    Статистика сессии
+                </div>
+
+                <table style="width:100%; font-size:13px; border-collapse:collapse;">
+
+                    <tr>
+                        <td style="padding:5px 0; color:#6b7280;">Всего студентов</td>
+                        <td style="padding:5px 0; text-align:right;"><b>{total}</b></td>
+                    </tr>
+
+                    <tr>
+                        <td style="padding:5px 0; color:#6b7280;">Успешно завершили</td>
+                        <td style="padding:5px 0; text-align:right; color:#16a34a;"><b>{passed}</b></td>
+                    </tr>
+
+                    <tr>
+                        <td style="padding:5px 0; color:#6b7280;">Не прошли</td>
+                        <td style="padding:5px 0; text-align:right; color:#dc2626;"><b>{failed}</b></td>
+                    </tr>
+
+                    <tr>
+                        <td style="padding:7px 0; border-top:1px solid #f1f5f9; color:#6b7280;">
+                            Доля прохождения
+                        </td>
+                        <td style="padding:7px 0; border-top:1px solid #f1f5f9; text-align:right; color:{color};">
+                            <b>{percent}%</b>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="padding:5px 0; color:#6b7280;">Средний результат</td>
+                        <td style="padding:5px 0; text-align:right;"><b>{avg}</b></td>
+                    </tr>
+
+                </table>
+
+                <div style="
+                    margin-top:8px;
+                    height:6px;
+                    background:#f1f5f9;
+                    border-radius:4px;
+                    overflow:hidden;
+                ">
+                    <div style="
+                        width:{percent}%;
+                        height:100%;
+                        background:{color};
+                    "></div>
+                </div>
+
+            </div>
+            ''',
+            total=total,
+            passed=passed,
+            failed=failed,
+            percent=percent,
+            avg=avg,
+            color=color
+        )
+    kpi_summary.short_description ="KPI"
 
     def has_change_permission(self, request, obj=None):
         return True
