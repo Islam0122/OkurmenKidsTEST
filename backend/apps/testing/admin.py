@@ -134,8 +134,8 @@ class AttemptInline(admin.TabularInline):
     show_change_link    = True
     verbose_name        = 'Попытка прохождения'
     verbose_name_plural = 'Попытки прохождения'
-    readonly_fields     = ['student_name', 'status_badge', 'score_display', 'started_at', 'finished_at']
-    fields              = ['student_name', 'status_badge', 'score_display', 'started_at', 'finished_at']
+    readonly_fields     = ['student_name', 'status_badge', 'score', 'started_at', 'finished_at']
+    fields              = ['student_name', 'status_badge', 'score', 'started_at', 'finished_at']
 
     def status_badge(self, obj):
         if not obj:
@@ -144,8 +144,8 @@ class AttemptInline(admin.TabularInline):
     status_badge.short_description = 'Статус'
 
     def score_display(self, obj):
-        if not obj or not obj.is_finished:
-            return '—'
+        # if not obj or not obj.is_finished:
+        #     return '—'
         color = '#27ae60' if obj.score >= 70 else '#e74c3c'
         return format_html('<strong style="color:{};">{:.1f}%</strong>', color, obj.score)
     score_display.short_description = 'Балл'

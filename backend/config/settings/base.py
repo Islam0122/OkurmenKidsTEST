@@ -285,3 +285,26 @@ IMPORT_EXPORT_USE_TRANSACTIONS = True      # wrap import in DB transaction
 IMPORT_EXPORT_SKIP_ADMIN_LOG   = False     # log every imported row (default)
 IMPORT_EXPORT_CHUNK_SIZE       = 100
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
+import os as _os
+
+CELERY_BROKER_URL = _os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+# Tasks always run in the same timezone as Django
+CELERY_TIMEZONE = TIME_ZONE  # noqa: F821  (defined in base.py)
+CELERY_ENABLE_UTC = True
+
+# Serialisation
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+
+# Reliability
+CELERY_TASK_ACKS_LATE = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # fair dispatch; important for long AI calls
+CELERY_TASK_SOFT_TIME_LIMIT = 120
+CELERY_TASK_TIME_LIMIT = 150
+
+# Queue definition (workers started with -Q ai_grading)
+CELERY_TASK_DEFAULT_QUEUE = 'default'

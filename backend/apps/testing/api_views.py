@@ -261,3 +261,41 @@ class SyncFinalizeView(APIView):
         except ValidationError as exc:
             return _err(exc)
         return Response(data)
+
+
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.core.exceptions import ValidationError
+
+
+class AnswerGradeStatusView(APIView):
+    """
+    GET /api/v1/answer/<uuid:answer_id>/grade-status
+
+    Lightweight polling endpoint — no auth required (answer_id acts as token).
+    Returns current AI grading status + result once available.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, answer_id):
+        from apps.testing.models import Answer
+
+        try:
+            answer = Answer.objects.select_related('question').get(pk=answer_id)
+        except Answer.DoesNotExist:
+            return Response({'detail': 'Answer not found.'}, status=404)
+
+        data = {
+            # ── Existing fields (always present) ─────────────────────────────
+            'answer_id': str(answer.id),
+            'grading_status': answer.grading_status,
+            'is_correct': answer.is_correct,
+
+            # ── New AI fields (null until graded) ─────────────────────────────
+            'ai_score': answer.ai_score,
+            'ai_confidence': answer.ai_confidence,
+            'ai_feedback': answer.ai_feedback or '',
+            'ai_suggestion': answer.ai_suggestion if hasattr(answer, 'ai_suggestion') else '',
+        }
+        return Response(data)

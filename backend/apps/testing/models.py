@@ -355,39 +355,50 @@ class StudentAttempt(models.Model):
         self.save(update_fields=['status'])
 
 
-# ── Answer ────────────────────────────────────────────────────────────────────
 
-class GradingStatus(models.TextChoices):
-    PENDING   = 'pending',   'На проверке'
-    AUTO      = 'auto',      'Авто'
-    AI        = 'ai',        'AI'
-    MANUAL    = 'manual',    'Вручную'
+class GradingStatus(models.TextChoices):  # noqa: F821  (models imported in host file)
+    PENDING    = 'pending',    'На проверке'
+    PROCESSING = 'processing', 'Обрабатывается'  # NEW: Celery picked it up
+    AUTO       = 'auto',       'Авто'
+    AI         = 'ai',         'AI'              # kept for backward compat
+    DONE       = 'done',       'Готово'          # NEW: AI grading finished
+    FAILED     = 'failed',     'Ошибка AI'       # NEW: all retries exhausted
+    MANUAL     = 'manual',     'Вручную'
 
 
-class Answer(models.Model):
+# ── Replace only the Answer model ─────────────────────────────────────────────
+
+class Answer(models.Model):  # noqa: F821
     id               = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     attempt          = models.ForeignKey(
-        StudentAttempt, on_delete=models.CASCADE,
+        'StudentAttempt', on_delete=models.CASCADE,
         related_name='answers', verbose_name='Попытка',
     )
     question         = models.ForeignKey(
-        Question, on_delete=models.CASCADE,
+        'Question', on_delete=models.CASCADE,
         related_name='answers', verbose_name='Вопрос',
     )
     answer_text      = models.TextField(blank=True, verbose_name='Текстовый ответ')
     selected_options = models.JSONField(default=list, verbose_name='Выбранные варианты (UUID)')
     is_correct       = models.BooleanField(null=True, blank=True, verbose_name='Верно?')
 
-    # Явный статус проверки — убирает неопределённость «None = не знаю что»
+    # ── Grading metadata ───────────────────────────────────────────────────────
     grading_status   = models.CharField(
-        max_length=10,
+        max_length=15,                        # widened from 10 to fit 'processing'
         choices=GradingStatus.choices,
         default=GradingStatus.PENDING,
         verbose_name='Статус проверки',
         db_index=True,
     )
+
+    # Legacy field (from migration 0004) — kept as-is for backward compat
     ai_grade         = models.FloatField(null=True, blank=True, verbose_name='Оценка AI (0–10)')
     ai_feedback      = models.TextField(blank=True, verbose_name='Комментарий AI')
+
+    # ── NEW fields (migration 0005) ────────────────────────────────────────────
+    ai_score         = models.FloatField(null=True, blank=True, verbose_name='Балл AI (0–10)')
+    ai_confidence    = models.FloatField(null=True, blank=True, verbose_name='Уверенность AI (0–1)')
+    ai_suggestion    = models.TextField(blank=True, verbose_name='Подсказка AI')
 
     answered_at      = models.DateTimeField(auto_now_add=True, verbose_name='Отвечено')
 
@@ -396,8 +407,10 @@ class Answer(models.Model):
         verbose_name        = 'Ответ пользователя'
         verbose_name_plural = 'Ответы пользователей'
         indexes = [
-            models.Index(fields=['attempt', 'question'], name='answer_attempt_question_idx'),
-            models.Index(fields=['grading_status'],       name='answer_grading_status_idx'),
+            models.Index(fields=['attempt', 'question'],       name='answer_attempt_question_idx'),
+            models.Index(fields=['grading_status'],            name='answer_grading_status_idx'),
+            models.Index(fields=['grading_status', 'answered_at'],
+                         name='answer_grading_status_time_idx'),
         ]
         constraints = [
             models.UniqueConstraint(
@@ -409,16 +422,23 @@ class Answer(models.Model):
     def __str__(self):
         return f'{self.attempt.student_name} → Q:{self.question_id}'
 
+    # ── Grading helpers ────────────────────────────────────────────────────────
+
     def mark_auto_graded(self, is_correct: bool) -> None:
+        """Used by AnswerService for choice questions — unchanged."""
         self.is_correct     = is_correct
         self.grading_status = GradingStatus.AUTO
         self.save(update_fields=['is_correct', 'grading_status'])
 
     def mark_ai_graded(self, grade: float, feedback: str) -> None:
+        """
+        Legacy method — still works.  New code uses tasks._persist_grade() instead,
+        which also populates ai_score, ai_confidence, ai_suggestion.
+        """
         self.ai_grade       = grade
         self.ai_feedback    = feedback
-        self.is_correct     = grade >= 5.0  # порог можно вынести в settings
-        self.grading_status = GradingStatus.AI
+        self.is_correct     = grade >= 5.0
+        self.grading_status = GradingStatus.DONE   # was 'ai'; 'done' is the new canonical value
         self.save(update_fields=['ai_grade', 'ai_feedback', 'is_correct', 'grading_status'])
 
     def mark_manual_graded(self, is_correct: bool) -> None:

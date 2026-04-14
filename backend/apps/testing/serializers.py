@@ -142,11 +142,11 @@ class AnswerSubmitSerializer(serializers.Serializer):
     )
 
 
-class AnswerResultSerializer(serializers.Serializer):
-    answer_id      = serializers.CharField()
-    is_correct     = serializers.BooleanField(allow_null=True)
-    grading_status = serializers.CharField()
-    message        = serializers.CharField()
+# class AnswerResultSerializer(serializers.Serializer):
+#     answer_id      = serializers.CharField()
+#     is_correct     = serializers.BooleanField(allow_null=True)
+#     grading_status = serializers.CharField()
+#     message        = serializers.CharField()
 
 
 class AttemptFinishSerializer(serializers.Serializer):
@@ -188,3 +188,25 @@ class SyncAnswerSerializer(serializers.Serializer):
     selected_options = serializers.ListField(
         child=serializers.UUIDField(), allow_empty=True, default=list,
     )
+
+
+
+class AnswerResultSerializer(serializers.Serializer):
+    answer_id = serializers.CharField()
+    is_correct = serializers.BooleanField(allow_null=True)
+    grading_status = serializers.CharField()
+    message = serializers.CharField()
+
+    ai_score = serializers.FloatField(allow_null=True, required=False)
+    ai_confidence = serializers.FloatField(allow_null=True, required=False)
+    ai_feedback = serializers.CharField(allow_blank=True, required=False)
+    ai_suggestion = serializers.CharField(allow_blank=True, required=False)
+
+
+
+class AIGradeDetailSerializer(serializers.Serializer):
+    score = serializers.FloatField(allow_null=True)
+    confidence = serializers.FloatField(allow_null=True)
+    feedback = serializers.CharField(allow_blank=True)
+    suggestion = serializers.CharField(allow_blank=True)
+    status = serializers.CharField()  # mirrors grading_status

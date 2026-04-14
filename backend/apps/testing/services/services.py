@@ -267,7 +267,8 @@ class AttemptService:
         }
 
 
-# ─── AnswerService ────────────────────────────────────────────────────────────
+
+# ── Paste this class into services.py, replacing the existing AnswerService ────
 
 class AnswerService:
 
@@ -277,18 +278,38 @@ class AnswerService:
         question_id: str,
         answer_text: str = '',
         selected_options: list[str] | None = None,
-    ) -> AnswerResult:
-        _, _, StudentAttempt, Answer, Question, _, _, _, _, GradingStatus = _models()
+    ):  # → AnswerResult (imported from same file)
+        """
+        Save a student answer.
+
+        Choice questions  → evaluated immediately (unchanged behaviour).
+        Text / code       → saved with grading_status='pending',
+                            Celery task enqueued for AI grading.
+
+        The API response is IDENTICAL in both cases.  Frontend checks
+        grading_status to know whether to poll for a result.
+        """
+        # Local imports to match existing pattern in services.py
+        from ..models import (
+            Answer, Question, StudentAttempt,
+            GradingStatus, QuestionType,
+        )
+        # AnswerResult is defined in the same file
+        from .services import AnswerResult  # adjust path if needed
+
         selected_options = selected_options or []
 
         try:
             attempt = StudentAttempt.objects.select_related('session__test').get(pk=attempt_id)
         except StudentAttempt.DoesNotExist:
+            from django.core.exceptions import ValidationError
             raise ValidationError('Attempt not found.')
 
         if attempt.is_finished:
+            from django.core.exceptions import ValidationError
             raise ValidationError('Attempt already finished.')
         if not attempt.session.is_valid:
+            from django.core.exceptions import ValidationError
             raise ValidationError('Session expired.')
 
         try:
@@ -296,10 +317,14 @@ class AnswerService:
                 pk=question_id, test=attempt.session.test,
             )
         except Question.DoesNotExist:
+            from django.core.exceptions import ValidationError
             raise ValidationError('Question not found in this test.')
 
-        is_correct, grading_status = AnswerService._evaluate(question, answer_text, selected_options)
+        is_correct, grading_status = AnswerService._evaluate(
+            question, answer_text, selected_options
+        )
 
+        from django.db import transaction
         with transaction.atomic():
             answer, _ = Answer.objects.update_or_create(
                 attempt=attempt,
@@ -312,14 +337,21 @@ class AnswerService:
                 },
             )
 
+        # ── Async AI grading (only for text/code) ────────────────────────────────
+        if grading_status == GradingStatus.PENDING:
+            AnswerService._enqueue_ai_grading(str(answer.id))
+
+        # ── Build response (identical shape to original) ──────────────────────────
+        if is_correct is None:
+            message = 'Answer saved, pending AI grading.'
+        else:
+            message = 'Correct!' if is_correct else 'Incorrect.'
+
         return AnswerResult(
             answer_id=str(answer.id),
             is_correct=is_correct,
             grading_status=grading_status,
-            message=(
-                'Answer saved, pending grading.' if is_correct is None
-                else ('Correct!' if is_correct else 'Incorrect.')
-            ),
+            message=message,
         )
 
     @staticmethod
@@ -328,21 +360,43 @@ class AnswerService:
         answer_text: str,
         selected_options: list[str],
     ) -> tuple[Optional[bool], str]:
-        from ..models import GradingStatus
-        qtype = question.question_type
+        """
+        Returns (is_correct, grading_status).
+        Unchanged logic for choice questions.
+        Text/code now returns ('pending') instead of (None, 'pending') — same value.
+        """
+        from ..models import GradingStatus, QuestionType
 
-        if qtype == 'single_choice':
+        if question.question_type == QuestionType.SINGLE_CHOICE:
             correct_ids = {str(o.id) for o in question.options.filter(is_correct=True)}
             result = len(selected_options) == 1 and set(selected_options) == correct_ids
             return result, GradingStatus.AUTO
 
-        if qtype == 'multiple_choice':
+        if question.question_type == QuestionType.MULTIPLE_CHOICE:
             correct_ids = {str(o.id) for o in question.options.filter(is_correct=True)}
             result = set(selected_options) == correct_ids
             return result, GradingStatus.AUTO
 
-        # text / code — требует AI или ручной проверки
+        # text / code — defer to AI
         return None, GradingStatus.PENDING
+
+    @staticmethod
+    def _enqueue_ai_grading(answer_id: str) -> None:
+        """
+        Fire-and-forget: enqueue Celery task.
+        Failure to enqueue is logged but never propagates to the API caller.
+        """
+        try:
+            from ..tasks import grade_answer_task
+            grade_answer_task.delay(answer_id)
+            logger.info("AI grading task enqueued for answer %s.", answer_id)
+        except Exception as exc:
+            # Celery broker might be down; the periodic regrade task will pick this up.
+            logger.error(
+                "Failed to enqueue AI grading task for answer %s: %s. "
+                "Will be retried by regrade_pending_answers_task.",
+                answer_id, exc,
+            )
 
 
 # ─── SyncService ──────────────────────────────────────────────────────────────
