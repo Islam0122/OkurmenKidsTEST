@@ -111,7 +111,7 @@ tablib==3.9.0
 tinycss2==1.4.0
 tinyhtml5==2.0.0
 typing-inspection==0.4.2
-typing_extensions==4.12.2
+typing_extensions>=4.14.1
 tzdata==2026.1
 tzlocal==5.3.1
 uritemplate==4.1.1
