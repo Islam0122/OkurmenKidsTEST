@@ -22,6 +22,7 @@ DJANGO_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
 ]
 
 THIRD_PARTY_APPS = [
@@ -29,6 +30,8 @@ THIRD_PARTY_APPS = [
     'corsheaders',
     'drf_spectacular',
     'django_filters',
+    'django_celery_beat',   # add this
+    'django_celery_results', # optional but useful
 ]
 
 LOCAL_APPS: list[str] = [
@@ -280,31 +283,41 @@ JAZZMIN_SETTINGS = {
 #         "success": "btn-success",
 #     },
 # }
-
-IMPORT_EXPORT_USE_TRANSACTIONS = True      # wrap import in DB transaction
-IMPORT_EXPORT_SKIP_ADMIN_LOG   = False     # log every imported row (default)
-IMPORT_EXPORT_CHUNK_SIZE       = 100
-DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 import os as _os
 
-CELERY_BROKER_URL = _os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+_REDIS_HOST = _os.environ.get('REDISHOST', 'localhost')
+_REDIS_PORT = _os.environ.get('REDISPORT', '6379')
+_REDIS_URL   = _os.environ.get(
+    'REDIS_URL',
+    f'redis://{_REDIS_HOST}:{_REDIS_PORT}/0'
+)
+
+CELERY_BROKER_URL            = _REDIS_URL
+CELERY_RESULT_BACKEND        = _REDIS_URL
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
-# Tasks always run in the same timezone as Django
-CELERY_TIMEZONE = TIME_ZONE  # noqa: F821  (defined in base.py)
-CELERY_ENABLE_UTC = True
+CELERY_TIMEZONE              = TIME_ZONE   # 'Asia/Bishkek'
+CELERY_ENABLE_UTC            = True        # store internally as UTC; display in TZ above
 
-# Serialisation
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER       = 'json'
+CELERY_RESULT_SERIALIZER     = 'json'
+CELERY_ACCEPT_CONTENT        = ['json']
 
-# Reliability
-CELERY_TASK_ACKS_LATE = True
-CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # fair dispatch; important for long AI calls
-CELERY_TASK_SOFT_TIME_LIMIT = 120
-CELERY_TASK_TIME_LIMIT = 150
+CELERY_TASK_ACKS_LATE                = True
+CELERY_WORKER_PREFETCH_MULTIPLIER    = 1
+CELERY_TASK_SOFT_TIME_LIMIT          = 120
+CELERY_TASK_TIME_LIMIT               = 150
 
-# Queue definition (workers started with -Q ai_grading)
-CELERY_TASK_DEFAULT_QUEUE = 'default'
+CELERY_TASK_DEFAULT_QUEUE            = 'default'
+
+# Result expiry — avoid Redis filling up with stale results
+CELERY_RESULT_EXPIRES        = 60 * 60 * 24  # 24 hours
+
+# Broker transport options — heartbeat tuning fixes "missing heartbeat" in Docker
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'visibility_timeout': 3600,  # 1 hour — must be > your longest task
+    'socket_keepalive': True,
+    'retry_policy': {
+        'timeout': 5.0,
+    },
+}

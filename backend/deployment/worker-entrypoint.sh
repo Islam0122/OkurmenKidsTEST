@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-set -e
-if ! id -u celeryuser >/dev/null 2>&1; then
-    useradd -m celeryuser
-fi
+set -euo pipefail
 
-exec su celeryuser -c "celery -A config worker -l info"
+exec celery -A config worker \
+  --loglevel=info \
+  --queues=default,ai_grading \
+  --concurrency=2 \
+  --max-tasks-per-child=50 \
+  --without-gossip \
+  --without-mingle
