@@ -142,12 +142,20 @@ class AnswerSubmitSerializer(serializers.Serializer):
     )
 
 
-# class AnswerResultSerializer(serializers.Serializer):
-#     answer_id      = serializers.CharField()
-#     is_correct     = serializers.BooleanField(allow_null=True)
-#     grading_status = serializers.CharField()
-#     message        = serializers.CharField()
+class LeaderboardSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField()
+    score = serializers.FloatField()
+    started_at = serializers.DateTimeField()
 
+    class Meta:
+        model = StudentAttempt
+        fields = [
+            'id',
+            'student_name',
+            'score',
+            'started_at',
+            'finished_at',
+        ]
 
 class AttemptFinishSerializer(serializers.Serializer):
     attempt_id = serializers.UUIDField()

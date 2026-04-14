@@ -22,6 +22,7 @@ from .api_views import (
     AttemptResultView, AttemptListView,
     SyncSessionDataView, SyncPushAnswerView,
     SyncAttemptStateView, SyncFinalizeView,
+    LeaderboardView
 )
 
 # NO app_name here — keeps import-export admin URL reversals clean.
@@ -56,4 +57,6 @@ urlpatterns = [
     path('api/v1/sync/attempt/<uuid:attempt_id>/answer',   SyncPushAnswerView.as_view(),   name='api-sync-answer'),
     path('api/v1/sync/attempt/<uuid:attempt_id>/state',    SyncAttemptStateView.as_view(), name='api-sync-state'),
     path('api/v1/sync/attempt/<uuid:attempt_id>/finalize', SyncFinalizeView.as_view(),     name='api-sync-finalize'),
+
+    path('api/v1/leaderboard/', LeaderboardView.as_view(), name='api-leaderboard'),
 ]

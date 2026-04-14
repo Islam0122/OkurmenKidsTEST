@@ -366,7 +366,6 @@ class GradingStatus(models.TextChoices):  # noqa: F821  (models imported in host
     MANUAL     = 'manual',     'Вручную'
 
 
-# ── Replace only the Answer model ─────────────────────────────────────────────
 
 class Answer(models.Model):  # noqa: F821
     id               = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

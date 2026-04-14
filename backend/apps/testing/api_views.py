@@ -299,3 +299,38 @@ class AnswerGradeStatusView(APIView):
             'ai_suggestion': answer.ai_suggestion if hasattr(answer, 'ai_suggestion') else '',
         }
         return Response(data)
+
+from rest_framework import generics
+from django.db.models import F, ExpressionWrapper, DurationField
+from django.utils import timezone
+
+from .models import StudentAttempt, AttemptStatus
+from .serializers import LeaderboardSerializer
+
+
+class LeaderboardView(generics.ListAPIView):
+    """
+    GET /api/v1/leaderboard?session=<uuid>
+    """
+    serializer_class = LeaderboardSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        session_id = self.request.query_params.get("session")
+
+        qs = StudentAttempt.objects.filter(
+            status=AttemptStatus.FINISHED,
+        ).select_related("session")
+
+        if session_id:
+            qs = qs.filter(session_id=session_id)
+
+        # tie-break: faster finish = higher rank
+        qs = qs.annotate(
+            duration=ExpressionWrapper(
+                F("finished_at") - F("started_at"),
+                output_field=DurationField()
+            )
+        ).order_by("-score", "duration")
+
+        return qs
