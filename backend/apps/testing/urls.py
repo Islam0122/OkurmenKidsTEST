@@ -24,6 +24,8 @@ from .api_views import (
     SyncAttemptStateView, SyncFinalizeView,
     LeaderboardView
 )
+from .api_views import SessionLeaderboardView, SessionResultsTableView
+
 
 # NO app_name here — keeps import-export admin URL reversals clean.
 
@@ -58,5 +60,16 @@ urlpatterns = [
     path('api/v1/sync/attempt/<uuid:attempt_id>/state',    SyncAttemptStateView.as_view(), name='api-sync-state'),
     path('api/v1/sync/attempt/<uuid:attempt_id>/finalize', SyncFinalizeView.as_view(),     name='api-sync-finalize'),
 
-    path('api/v1/leaderboard/', LeaderboardView.as_view(), name='api-leaderboard'),
+    path('api/v2/leaderboard/', LeaderboardView.as_view(), name='api-leaderboard'),
+    path(
+        'api/v2/sessions/<uuid:session_id>/leaderboard',
+        SessionLeaderboardView.as_view(),
+        name='api-session-leaderboard',
+    ),
+    path(
+        'api/v2/sessions/<uuid:session_id>/results-table',
+        SessionResultsTableView.as_view(),
+        name='api-session-results-table',
+    ),
 ]
+

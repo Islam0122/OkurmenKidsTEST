@@ -334,3 +334,212 @@ class LeaderboardView(generics.ListAPIView):
         ).order_by("-score", "duration")
 
         return qs
+
+from django.db.models import (
+    BooleanField,
+    Case,
+    Count,
+    ExpressionWrapper,
+    F,
+    FloatField,
+    IntegerField,
+    OuterRef,
+    Q,
+    Subquery,
+    Value,
+    When,
+    DurationField,
+)
+from django.db.models.functions import Coalesce, Extract
+from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import status
+from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
+
+from apps.testing.models import AttemptStatus, StudentAttempt, TestSession
+
+from .filters import AttemptResultsFilter
+from .session_serializers import AttemptResultRowSerializer, LeaderboardEntrySerializer
+
+
+
+def _duration_seconds_expr():
+    """
+    Returns an annotated expression for duration in seconds.
+    Works on PostgreSQL via EXTRACT(EPOCH FROM ...) equivalent.
+    Falls back gracefully on SQLite (returns timedelta float).
+    """
+    return ExpressionWrapper(
+        F("finished_at") - F("started_at"),
+        output_field=DurationField(),
+    )
+
+
+def _annotate_attempt_qs(qs):
+    """
+    Single-pass annotation:
+      - correct_count   (answers where is_correct=True)
+      - wrong_count     (answers where is_correct=False)
+      - answered_count  (all submitted answers)
+      - duration        (timedelta, nullable)
+    """
+    return qs.annotate(
+        correct_count=Count("answers", filter=Q(answers__is_correct=True)),
+        wrong_count=Count("answers", filter=Q(answers__is_correct=False)),
+        answered_count=Count("answers"),
+        duration=ExpressionWrapper(
+            F("finished_at") - F("started_at"),
+            output_field=DurationField(),
+        ),
+    )
+
+
+def _to_seconds(td) -> float | None:
+    """Convert timedelta → float seconds (None-safe)."""
+    if td is None:
+        return None
+    return td.total_seconds()
+
+
+class StandardPagination(PageNumberPagination):
+    page_size            = 20
+    page_size_query_param = "page_size"
+    max_page_size        = 200
+
+
+
+class SessionLeaderboardView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, session_id):
+        session = get_object_or_404(
+            TestSession.objects.select_related("test"),
+            pk=session_id,
+        )
+
+        qs = (
+            StudentAttempt.objects
+            .filter(session=session, status=AttemptStatus.FINISHED)
+            .annotate(
+                duration=ExpressionWrapper(
+                    F("finished_at") - F("started_at"),
+                    output_field=DurationField(),
+                )
+            )
+            .order_by("-score", "duration")
+            .values("id", "student_name", "score", "duration")
+        )
+
+        results = []
+        for rank, row in enumerate(qs, start=1):
+            results.append({
+                "rank":             rank,
+                "attempt_id":       row["id"],
+                "student_name":     row["student_name"],
+                "score":            row["score"],
+                "duration_seconds": _to_seconds(row["duration"]),
+            })
+
+        return Response({
+            "session_id": str(session_id),
+            "count":      len(results),
+            "results":    results,
+        })
+
+
+class SessionResultsTableView(ListAPIView):
+
+
+    permission_classes  = [IsAdminUser]
+    pagination_class    = StandardPagination
+    filter_backends     = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_class     = AttemptResultsFilter
+    search_fields       = ["student_name"]
+    ordering_fields     = ["score", "started_at", "duration", "answered_count"]
+    ordering            = ["-started_at"]
+
+    # We override get_queryset to scope by session_id from the URL.
+    # The filterset still works — it just starts with a pre-filtered qs.
+
+    def get_session(self):
+        if not hasattr(self, "_session"):
+            self._session = get_object_or_404(
+                TestSession.objects.select_related("test"),
+                pk=self.kwargs["session_id"],
+            )
+        return self._session
+
+    def get_queryset(self):
+        session = self.get_session()
+
+        # Subquery: total question count for this session's test
+        # We use a static value here because the test is fixed per session,
+        # but using Subquery keeps it SQL-level and avoids an extra Python round-trip
+        # if this view is ever reused outside the session context.
+        from apps.testing.models import Question
+        total_subquery = Subquery(
+            Question.objects
+            .filter(test=session.test)
+            .values("test")
+            .annotate(cnt=Count("id"))
+            .values("cnt")[:1],
+            output_field=IntegerField(),
+        )
+
+        qs = (
+            StudentAttempt.objects
+            .filter(session=session)
+            .select_related("session__test")
+            .annotate(
+                correct_count=Count("answers", filter=Q(answers__is_correct=True)),
+                wrong_count=Count("answers",   filter=Q(answers__is_correct=False)),
+                answered_count=Count("answers"),
+                total_questions=total_subquery,
+                duration=ExpressionWrapper(
+                    F("finished_at") - F("started_at"),
+                    output_field=DurationField(),
+                ),
+            )
+        )
+        return qs
+
+    def get_serializer_class(self):
+        return AttemptResultRowSerializer
+
+    def list(self, request, *args, **kwargs):
+        qs         = self.filter_queryset(self.get_queryset())
+        page       = self.paginate_queryset(qs)
+        session    = self.get_session()
+        rows       = page if page is not None else qs
+
+        data = []
+        for attempt in rows:
+            data.append({
+                "id":              attempt.id,
+                "student_name":    attempt.student_name,
+                "score":           attempt.score,
+                "status":          attempt.status,
+                "correct":         attempt.correct_count,
+                "wrong":           attempt.wrong_count,
+                "total":           attempt.total_questions or 0,
+                "answered":        attempt.answered_count,
+                "duration_seconds": _to_seconds(attempt.duration),
+                "started_at":      attempt.started_at,
+                "finished_at":     attempt.finished_at,
+            })
+
+        serializer = AttemptResultRowSerializer(data, many=True)
+
+        if page is not None:
+            return self.get_paginated_response(serializer.data)
+
+        return Response({
+            "session_id": str(session.id),
+            "count":      len(data),
+            "results":    serializer.data,
+        })
