@@ -8,12 +8,65 @@ from django.core.exceptions import ValidationError
 from django.db.models import Prefetch
 
 
-QUESTIONS_PER_TYPE = 5
-QUESTION_TYPES = ["single_choice", "multiple_choice", "text", "code"]
-TOTAL_QUESTIONS = len(QUESTION_TYPES) * QUESTIONS_PER_TYPE  # 20
+TOTAL_QUESTIONS = 20
+QUESTION_TYPES  = ["single_choice", "multiple_choice", "text", "code"]
+
+
+# ── Distribution ──────────────────────────────────────────────────────────────
+
+def _compute_distribution(available_types: list[str]) -> dict[str, int]:
+    """
+    Distribute TOTAL_QUESTIONS as evenly as possible across available types.
+
+    Examples (TOTAL_QUESTIONS = 20):
+      4 types → {each: 5}          → [5, 5, 5, 5]
+      3 types → {two: 7, one: 6}   → [7, 7, 6]
+      2 types → {each: 10}         → [10, 10]
+      1 type  → {one: 20}          → [20]
+
+    Remainder is distributed left-to-right (first types get the extra question).
+    """
+    n = len(available_types)
+    if n == 0:
+        return {}
+
+    base, remainder = divmod(TOTAL_QUESTIONS, n)
+
+    return {
+        qtype: base + (1 if i < remainder else 0)
+        for i, qtype in enumerate(available_types)
+    }
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _fill_to_n(pool: list, n: int, rng: random.Random) -> list:
+    """
+    Select exactly n questions from pool.
+
+    - pool >= n : random sample without duplicates.
+    - pool <  n : repeat-sample until n reached,
+                  avoiding consecutive duplicates where possible.
+    """
+    if not pool:
+        raise ValidationError("Cannot fill from an empty pool.")
+
+    if len(pool) >= n:
+        return rng.sample(pool, n)
+
+    result: list = []
+    last_id = None
+
+    while len(result) < n:
+        available = [q for q in pool if q.id != last_id]
+        if not available:
+            available = pool  # single-item pool — must repeat
+        chosen = rng.choice(available)
+        result.append(chosen)
+        last_id = chosen.id
+
+    return result
+
 
 def _serialize_question(q) -> dict:
     item = {
@@ -36,30 +89,7 @@ def _serialize_question(q) -> dict:
     return item
 
 
-def _fill_to_n(pool: list, n: int, rng: random.Random) -> list:
-    """
-    If pool has fewer than n items, repeat-sample until we reach n.
-    Avoids consecutive duplicates when possible.
-    """
-    if len(pool) >= n:
-        return rng.sample(pool, n)
-
-    result: list = []
-    last_id = None
-
-    while len(result) < n:
-        available = [q for q in pool if q.id != last_id]
-        if not available:
-            available = pool  # only one question — must repeat
-        chosen = rng.choice(available)
-        result.append(chosen)
-        last_id = chosen.id
-
-    return result
-
-
 def _seed_from_attempt_id(attempt_id: str) -> int:
-    """Derive a deterministic int seed from a UUID string."""
     return int(attempt_id.replace("-", ""), 16) % (2 ** 31)
 
 
@@ -71,18 +101,22 @@ def get_questions_for_attempt(
     attempt_id: Optional[str] = None,
 ) -> list[dict]:
     """
-    Select exactly 20 questions (5 per type) for a test attempt.
+    Select exactly TOTAL_QUESTIONS (20) questions for an attempt
+    with adaptive distribution across available question types.
 
-    Priority for seed:
-      1. explicit `seed` param
-      2. derived from `attempt_id` if provided
-      3. fully random (no seed)
+    Distribution rules:
+      - 4 types present → 5 each
+      - 3 types present → 7, 7, 6
+      - 2 types present → 10, 10
+      - 1 type  present → 20
 
-    Single DB query + prefetch_related (no N+1).
-    Fills with repeated questions if a type has < 5 in the test.
-    Shuffles the final 20 so types are interleaved.
+    If a type has fewer questions than its quota, questions are
+    repeated randomly (no consecutive duplicates where possible).
 
-    Raises ValidationError if any question type is completely absent.
+    Single DB query + prefetch_related (zero N+1).
+    Reproducible when seed or attempt_id is provided.
+
+    Raises ValidationError if the test has no questions at all.
     """
     from ..models import Question
 
@@ -93,41 +127,40 @@ def get_questions_for_attempt(
 
     rng = random.Random(resolved_seed)
 
-    # ── 1. Single query: all questions for this test + options ────────────────
+    # ── 1. Single query: fetch all questions + options ────────────────────────
     all_questions = list(
         Question.objects
         .filter(test_id=test_id)
         .prefetch_related(Prefetch("options"))
-        .order_by()  # strip default ordering for pure random sampling
+        .order_by()  # strip default ordering; we shuffle ourselves
     )
 
     if not all_questions:
         raise ValidationError(f"Test {test_id} has no questions.")
 
-    # ── 2. Group by type in Python (zero extra queries) ───────────────────────
+    # ── 2. Group by type (Python-side, no extra queries) ─────────────────────
     grouped: dict[str, list] = defaultdict(list)
     for q in all_questions:
         grouped[q.question_type].append(q)
 
-    # ── 3. Validate all types are present ─────────────────────────────────────
-    missing = [t for t in QUESTION_TYPES if not grouped.get(t)]
-    if missing:
-        raise ValidationError(
-            f"Test {test_id} is missing question types: {missing}. "
-            "All four types (single_choice, multiple_choice, text, code) are required."
-        )
+    # Preserve canonical type order; include only types that exist in this test
+    available_types = [t for t in QUESTION_TYPES if grouped.get(t)]
 
-    # ── 4. Select exactly 5 per type ─────────────────────────────────────────
+    # ── 3. Compute adaptive distribution ─────────────────────────────────────
+    distribution = _compute_distribution(available_types)
+
+    # ── 4. Select per type ───────────────────────────────────────────────────
     selected: list = []
-    for qtype in QUESTION_TYPES:
-        pool = grouped[qtype]
-        chosen = _fill_to_n(pool, QUESTIONS_PER_TYPE, rng)
+    for qtype in available_types:
+        quota = distribution[qtype]
+        pool  = grouped[qtype]
+        chosen = _fill_to_n(pool, quota, rng)
         selected.extend(chosen)
 
-    # ── 5. Shuffle so types are interleaved ───────────────────────────────────
+    # ── 5. Shuffle so types are not clustered ─────────────────────────────────
     rng.shuffle(selected)
 
-    # ── 6. Serialize (no extra queries — options already prefetched) ──────────
+    # ── 6. Serialize (options already prefetched — zero extra queries) ────────
     return [_serialize_question(q) for q in selected]
 
 
@@ -135,13 +168,14 @@ def get_questions_for_attempt(
 
 def validate_attempt_structure(answers: list[dict]) -> None:
     """
-    Validate that a submitted answer list matches the expected structure:
-      - Exactly 20 answers total
-      - Exactly 5 answers per question type
+    Validate that a submitted answer list matches the adaptive distribution
+    that would have been generated for the same set of question types.
 
-    Each answer dict must contain one of:
-      - { "question_type": "..." }
-      - { "question": { "question_type": "..." } }
+    Rules enforced:
+      - Exactly TOTAL_QUESTIONS (20) answers.
+      - Only known question types.
+      - Type distribution matches _compute_distribution() for the
+        types actually present in the answers.
 
     Raises ValidationError with a descriptive message on any violation.
     """
@@ -153,10 +187,9 @@ def validate_attempt_structure(answers: list[dict]) -> None:
             f"Expected exactly {TOTAL_QUESTIONS} answers, got {len(answers)}."
         )
 
+    # ── Count types present in answers ────────────────────────────────────────
     type_counts: dict[str, int] = defaultdict(int)
-
     for i, answer in enumerate(answers):
-        # Support both flat { question_type } and nested { question: { question_type } }
         qtype = (
             answer.get("question_type")
             or (answer.get("question") or {}).get("question_type")
@@ -172,19 +205,32 @@ def validate_attempt_structure(answers: list[dict]) -> None:
             )
         type_counts[qtype] += 1
 
+    # ── Reconstruct expected distribution ─────────────────────────────────────
+    present_types = [t for t in QUESTION_TYPES if type_counts.get(t, 0) > 0]
+    expected_dist = _compute_distribution(present_types)
+
     violations = [
-        f"  '{qtype}': expected {QUESTIONS_PER_TYPE}, got {type_counts.get(qtype, 0)}"
-        for qtype in QUESTION_TYPES
-        if type_counts.get(qtype, 0) != QUESTIONS_PER_TYPE
+        f"  '{qtype}': expected {expected_dist.get(qtype, 0)}, got {type_counts.get(qtype, 0)}"
+        for qtype in present_types
+        if type_counts.get(qtype, 0) != expected_dist.get(qtype, 0)
     ]
     if violations:
         raise ValidationError(
-            "Attempt structure invalid — type distribution mismatch:\n"
-            + "\n".join(violations)
+            f"Attempt structure invalid — distribution mismatch "
+            f"({len(present_types)} type(s) detected, "
+            f"expected {expected_dist}):\n" + "\n".join(violations)
         )
 
 
+# ── Integration helper ────────────────────────────────────────────────────────
+
 def build_attempt_questions(test_id: str, attempt_id: str) -> list[dict]:
+    """
+    Convenience wrapper for AttemptService.start_attempt().
+
+    Seed is derived from attempt_id so the same attempt always
+    produces the same question set (idempotent on retry).
+    """
     return get_questions_for_attempt(
         test_id=test_id,
         attempt_id=attempt_id,
