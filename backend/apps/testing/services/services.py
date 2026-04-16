@@ -169,7 +169,6 @@ class AttemptService:
                     f'Student "{student_name}" already has attempt in this EXAM session.'
                 )
 
-        # TRAINING → no limit (ничего не делаем)
 
         with transaction.atomic():
             attempt = StudentAttempt.objects.create(
@@ -185,13 +184,19 @@ class AttemptService:
             'Attempt %s started by "%s" [session_type=%s]',
             attempt.id, student_name, session.session_type,
         )
+        from .question_selector import build_attempt_questions
+
+        questions = build_attempt_questions(
+            test_id=str(session.test_id),
+            attempt_id=str(attempt.id),
+        )
 
         return AttemptStartResult(
             attempt_id=str(attempt.id),
             student_name=student_name,
             test_title=session.test.title,
             session_type=session.session_type,
-            questions=_serialize_questions(session.test),
+            questions=questions,
         )
 
     @staticmethod

@@ -26,3 +26,8 @@ from .services import (
     finish_attempt,
     get_attempt_result,
 )
+from .question_selector import (
+    get_questions_for_attempt,
+    validate_attempt_structure,
+    build_attempt_questions,
+)
