@@ -68,7 +68,6 @@ class TestDetailView(generics.RetrieveUpdateDestroyAPIView):
 # ─── Sessions ─────────────────────────────────────────────────────────────────
 
 class SessionCreateView(APIView):
-    permission_classes = [IsAdminUser]
 
     def post(self, request):
         ser = SessionCreateSerializer(data=request.data)
@@ -121,7 +120,6 @@ class SessionExpireView(APIView):
 
 class SessionListView(generics.ListAPIView):
     serializer_class   = TestSessionSerializer
-    permission_classes = [IsAdminUser]
     filter_backends    = [DjangoFilterBackend, OrderingFilter]
     filterset_fields   = ['test', 'is_active', 'status']
 
