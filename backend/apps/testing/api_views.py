@@ -191,7 +191,6 @@ class AttemptResultView(APIView):
 
 class AttemptListView(generics.ListAPIView):
     serializer_class   = StudentAttemptSerializer
-    permission_classes = [IsAdminUser]
     filter_backends    = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields   = ['session', 'session__test', 'status']
     search_fields      = ['student_name']
