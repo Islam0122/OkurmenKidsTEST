@@ -449,9 +449,6 @@ class SessionLeaderboardView(APIView):
 
 
 class SessionResultsTableView(ListAPIView):
-
-
-    permission_classes  = [IsAdminUser]
     pagination_class    = StandardPagination
     filter_backends     = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class     = AttemptResultsFilter
