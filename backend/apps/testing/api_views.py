@@ -1,7 +1,7 @@
 from __future__ import annotations
 import logging
 from rest_framework import status, generics
-from rest_framework.permissions import IsAdminUser, AllowAny
+from rest_framework.permissions import  AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
@@ -108,7 +108,6 @@ class SessionEnterView(SessionValidateView):
 
 class SessionExpireView(APIView):
     """POST /api/v1/sessions/{id}/expire — admin force-expires a session."""
-    permission_classes = [IsAdminUser]
 
     def post(self, request, session_id):
         try:
