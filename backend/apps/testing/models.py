@@ -310,12 +310,10 @@ class StudentAttempt(models.Model):
 
     # ── Score calculation (явный, безопасный) ─────────────────────────────────
 
+
     def _recalculate_score(self) -> None:
-        """
-        Считаем score только по auto-gradable вопросам.
-        Для text/code (is_correct=None) — исключаем из знаменателя,
-        чтобы не занижать балл за ещё не проверенные ответы.
-        """
+        from .services.question_selector import TOTAL_QUESTIONS
+
         answers = list(self.answers.select_related('question').all())
         if not answers:
             self.score = 0.0
@@ -323,12 +321,11 @@ class StudentAttempt(models.Model):
 
         gradable = [a for a in answers if a.is_correct is not None]
         if not gradable:
-            # Все вопросы требуют ручной/AI проверки
             self.score = 0.0
             return
 
         correct = sum(1 for a in gradable if a.is_correct)
-        self.score = round((correct / len(gradable)) * 100, 2)
+        self.score = round((correct / TOTAL_QUESTIONS) * 100, 2)
 
     def finish(self) -> None:
         if self.is_finished:
