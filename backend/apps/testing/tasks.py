@@ -45,7 +45,7 @@ def grade_answer_task(self, answer_id: str) -> dict:
 
     # ── 1. Guard: ensure answer exists and is still pending ─────────────────────
     try:
-        answer = Answer.objects.select_related("question").get(pk=answer_id)
+        answer = Answer.objects.select_related("question", "attempt").get(pk=answer_id)
     except Answer.DoesNotExist:
         logger.error("[grade_answer_task] Answer %s not found — aborting.", answer_id)
         return {"status": "not_found", "answer_id": answer_id}
@@ -68,6 +68,7 @@ def grade_answer_task(self, answer_id: str) -> dict:
     # ── 4a. Success ──────────────────────────────────────────────────────────────
     if result is not None:
         try:
+
             _persist_grade(answer, result)
             logger.info(
                 "[grade_answer_task] Done: answer=%s score=%.1f is_correct=%s",
@@ -133,15 +134,8 @@ def regrade_pending_answers_task() -> dict:
     return {"enqueued": count}
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────────────
-
 def _persist_grade(answer, result) -> None:
-    """
-    Write AI grading results to the Answer model.
-    ONLY touches the extended fields added in migration 0005.
-    Never modifies: answer_text, selected_options, answered_at.
-    """
-    from apps.testing.models import GradingStatus
+    from .models import GradingStatus
 
     answer.is_correct      = result.is_correct
     answer.ai_score        = result.score
@@ -158,3 +152,7 @@ def _persist_grade(answer, result) -> None:
         "ai_suggestion",
         "grading_status",
     ])
+
+    attempt = answer.attempt
+    attempt._recalculate_score()
+    attempt.save(update_fields=["score"])
