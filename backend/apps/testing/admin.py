@@ -442,7 +442,7 @@ class TestSessionAdmin(admin.ModelAdmin):
         return True
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        return True
 
     def session_label(self, obj):
         if obj.title:
