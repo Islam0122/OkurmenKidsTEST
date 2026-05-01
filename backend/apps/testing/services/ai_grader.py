@@ -28,9 +28,14 @@ class GradeResult:
             "suggestion": self.suggestion,
         }
 
-
 _TEXT_PROMPT_TEMPLATE = """
-You are a strict but fair academic grader. Evaluate the student's answer.
+You are a strict but fair academic grader working with beginner-level students (early-stage learners, ~1 month of study).
+
+IMPORTANT CONTEXT:
+- The student is a beginner.
+- Be slightly lenient and supportive in grading.
+- Reward partial understanding.
+- Focus on the core idea rather than perfect completeness.
 
 QUESTION:
 {question}
@@ -39,21 +44,29 @@ STUDENT ANSWER:
 {answer}
 
 GRADING INSTRUCTIONS:
-1. Assess factual correctness and completeness (0–10).
+1. Assess factual correctness and completeness (0–10, integers only).
 2. A score ≥ 6 means the answer is considered correct.
-3. Provide concise feedback (1–3 sentences).
-4. Provide a short improvement suggestion (1–2 sentences).
-5. Estimate your confidence in this grade (0.0–1.0).
+3. Give credit for partially correct answers.
+4. Do not penalize heavily for small mistakes or missing details.
+5. If the student shows basic understanding, score at least 6.
+6. Be concise and avoid repetition.
+7. Do not restate the question.
+8. Do not include extra text or formatting.
 
-RESPOND ONLY IN THIS EXACT FORMAT (no extra text):
+RESPOND ONLY IN THIS EXACT FORMAT:
 SCORE: <number>/10
 CONFIDENCE: <decimal between 0 and 1>
-FEEDBACK: <your feedback>
-SUGGESTION: <your suggestion>
+FEEDBACK: <1–3 short sentences>
+SUGGESTION: <1–2 short sentences>
 """.strip()
 
 _CODE_PROMPT_TEMPLATE = """
-You are a senior {language} engineer and code reviewer.
+You are a senior {language} engineer and code reviewer working with beginner-level students (~1 month of experience).
+
+IMPORTANT CONTEXT:
+- The student is a beginner.
+- Be slightly lenient and supportive.
+- Reward partially correct logic even if not perfect.
 
 TASK:
 {question}
