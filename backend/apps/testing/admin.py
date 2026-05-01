@@ -467,11 +467,17 @@ class TestSessionAdmin(admin.ModelAdmin):
     test_link.short_description = 'Тест'
     test_link.admin_order_field = 'test__title'
 
+
     def status_badge(self, obj):
-        return _badge(obj.get_status_display(), STATUS_COLORS.get(obj.status, '#7f8c8d'))
+        effective = obj.effective_status
+        return _badge(
+            obj.get_status_display() if effective == obj.status
+            else 'Завершена',
+            STATUS_COLORS.get(effective, '#7f8c8d'),
+        )
+
     status_badge.short_description = 'Статус'
     status_badge.admin_order_field = 'status'
-
     def valid_indicator(self, obj):
         if not obj or not obj.pk:
             return '—'

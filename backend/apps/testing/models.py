@@ -238,6 +238,12 @@ class TestSession(models.Model):
         return True  # training — всегда доступен
 
     @property
+    def effective_status(self) -> str:
+        if self.is_exam and timezone.now() >= self.expires_at:
+            return SessionStatus.FINISHED
+        return self.status
+
+    @property
     def active_attempt_count(self) -> int:
         return self.attempts.filter(status=AttemptStatus.ACTIVE).count()
 

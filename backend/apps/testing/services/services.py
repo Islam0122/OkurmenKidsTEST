@@ -105,6 +105,7 @@ class SessionService:
             status=session.status,
         )
 
+
     @staticmethod
     def validate_session(key: str):
         _, TestSession, *_ = _models()
@@ -112,10 +113,13 @@ class SessionService:
             session = TestSession.objects.select_related('test').get(key=key)
         except TestSession.DoesNotExist:
             raise ValidationError('Invalid session key.')
-        if not session.is_valid:
-            raise ValidationError('Session expired or deactivated.')
-        return session
 
+        if not session.is_valid:
+            if session.is_exam and session.is_active:
+                session.deactivate()
+            raise ValidationError('Session expired or deactivated.')
+
+        return session
     @staticmethod
     def expire_session(session_id: str) -> None:
         _, TestSession, *_ = _models()

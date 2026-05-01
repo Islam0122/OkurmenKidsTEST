@@ -156,3 +156,37 @@ def _persist_grade(answer, result) -> None:
     attempt = answer.attempt
     attempt._recalculate_score()
     attempt.save(update_fields=["score"])
+
+@shared_task(name="testing.expire_stale_sessions_task")
+def expire_stale_sessions_task() -> dict:
+    """
+    Переводит просроченные exam-сессии в status='finished', is_active=False.
+    Запускать каждые 5 минут через Celery Beat.
+    """
+    from django.utils import timezone
+    from apps.testing.models import TestSession, SessionStatus, SessionType
+
+    now = timezone.now()
+
+    stale = TestSession.objects.filter(
+        session_type=SessionType.EXAM,
+        is_active=True,
+        expires_at__lt=now,
+    ).exclude(status=SessionStatus.FINISHED)
+
+    count = stale.count()
+
+    stale.update(
+        status=SessionStatus.FINISHED,
+        is_active=False,
+    )
+
+    from apps.testing.models import StudentAttempt, AttemptStatus
+
+    StudentAttempt.objects.filter(
+        session__in=stale,
+        status=AttemptStatus.ACTIVE,
+    ).update(status=AttemptStatus.EXPIRED)
+
+    logger.info("[expire_stale_sessions_task] Expired %d sessions.", count)
+    return {"expired_sessions": count}

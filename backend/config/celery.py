@@ -33,4 +33,8 @@ app.conf.beat_schedule = {
         'task':     'testing.regrade_pending_answers_task',
         'schedule': crontab(minute='*/10'),
     },
+    'expire-stale-sessions-every-5-min': {
+        'task':     'testing.expire_stale_sessions_task',
+        'schedule': crontab(minute='*/5'),
+    },
 }
