@@ -1,0 +1,992 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}KPI Dashboard — {{ block.super }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ── CSS Variables ────────────────────────────────────────────────────────── */
+:root {
+  --kpi-blue:    #2563eb;
+  --kpi-green:   #059669;
+  --kpi-red:     #dc2626;
+  --kpi-orange:  #d97706;
+  --kpi-purple:  #7c3aed;
+  --kpi-teal:    #0891b2;
+  --kpi-navy:    #1f4e79;
+  --kpi-gray:    #64748b;
+  --kpi-border:  #e2e8f0;
+  --kpi-surface: #ffffff;
+  --kpi-bg:      #f8fafc;
+  --radius-lg:   14px;
+  --radius-md:   8px;
+  --shadow:      0 2px 12px rgba(0,0,0,.07);
+}
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+.kpi-page { font-family: inherit; }
+
+.kpi-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--kpi-surface);
+  border: 1px solid var(--kpi-border);
+  border-radius: var(--radius-lg);
+  padding: 14px 20px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow);
+}
+.kpi-toolbar-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--kpi-navy);
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Period buttons */
+.kpi-period-btn {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1.5px solid var(--kpi-border);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--kpi-gray);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all .15s;
+}
+.kpi-period-btn:hover,
+.kpi-period-btn.active {
+  background: var(--kpi-navy);
+  border-color: var(--kpi-navy);
+  color: #fff;
+}
+
+/* Test filter */
+.kpi-select {
+  padding: 7px 12px;
+  border: 1.5px solid var(--kpi-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--kpi-navy);
+  background: var(--kpi-surface);
+  min-width: 180px;
+}
+
+.kpi-export-btn {
+  padding: 7px 18px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: filter .15s;
+}
+.kpi-export-btn:hover { filter: brightness(1.1); color: #fff; }
+
+/* Refresh badge */
+.kpi-cache-note {
+  font-size: 11px;
+  color: var(--kpi-gray);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Date range inputs ───────────────────────────────────────────────────── */
+.kpi-date-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.kpi-date-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--kpi-gray);
+  white-space: nowrap;
+}
+.kpi-date-input {
+  padding: 6px 10px;
+  border: 1.5px solid var(--kpi-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--kpi-navy);
+  background: var(--kpi-surface);
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.kpi-date-input:hover,
+.kpi-date-input:focus {
+  border-color: var(--kpi-blue);
+  outline: none;
+}
+/* Native date picker icon color (webkit) */
+.kpi-date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: .6;
+}
+.kpi-date-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* ── Section headers ─────────────────────────────────────────────────────── */
+.kpi-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--kpi-navy);
+  margin: 28px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--kpi-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Metric Cards ────────────────────────────────────────────────────────── */
+.kpi-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 8px;
+}
+.kpi-card {
+  background: var(--kpi-surface);
+  border: 1px solid var(--kpi-border);
+  border-radius: var(--radius-lg);
+  padding: 18px 16px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  transition: transform .15s, box-shadow .15s;
+  position: relative;
+  overflow: hidden;
+}
+.kpi-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--card-accent, var(--kpi-blue));
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.11);
+}
+.kpi-card-icon {
+  font-size: 22px;
+  margin-bottom: 6px;
+  color: var(--card-accent, var(--kpi-blue));
+}
+.kpi-card-num {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--card-accent, var(--kpi-navy));
+}
+.kpi-card-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--kpi-gray);
+  margin-top: 6px;
+}
+
+/* ── Breakdown cards (session type, etc.) ────────────────────────────────── */
+.kpi-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.kpi-breakdown-card {
+  background: var(--kpi-surface);
+  border: 1px solid var(--kpi-border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+}
+.kpi-breakdown-card h4 {
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--kpi-navy);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.kpi-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 13px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.kpi-breakdown-row:last-child { border-bottom: none; }
+.kpi-breakdown-row .label { color: var(--kpi-gray); }
+.kpi-breakdown-row .value { font-weight: 700; color: var(--kpi-navy); }
+
+/* Progress bar */
+.kpi-prog-bar {
+  height: 5px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+.kpi-prog-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--kpi-blue), var(--kpi-green));
+  transition: width .4s ease;
+}
+
+/* ── Charts ──────────────────────────────────────────────────────────────── */
+.kpi-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 1100px) { .kpi-charts-grid { grid-template-columns: 1fr; } }
+
+.kpi-chart-card {
+  background: var(--kpi-surface);
+  border: 1px solid var(--kpi-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+.kpi-chart-card h4 {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--kpi-navy);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.kpi-chart-card canvas { max-height: 280px; }
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+.kpi-table-wrap {
+  background: var(--kpi-surface);
+  border: 1px solid var(--kpi-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.kpi-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.kpi-table thead th {
+  background: var(--kpi-navy);
+  color: #fff;
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.kpi-table tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--kpi-border);
+  vertical-align: middle;
+}
+.kpi-table tbody tr:last-child td { border-bottom: none; }
+.kpi-table tbody tr:hover td { background: var(--kpi-bg); }
+
+/* Score badge */
+.score-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.score-high  { background: #d1fae5; color: #065f46; }
+.score-mid   { background: #fef3c7; color: #92400e; }
+.score-low   { background: #fee2e2; color: #991b1b; }
+
+/* Status badge */
+.status-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Rank medal */
+.rank-medal {
+  font-size: 16px;
+  display: inline-block;
+  width: 28px;
+  text-align: center;
+}
+
+/* AI status indicator */
+.ai-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+.dot-pending    { background: #94a3b8; }
+.dot-processing { background: #f59e0b; }
+.dot-done       { background: #10b981; }
+.dot-failed     { background: #ef4444; }
+
+/* Duration format */
+.dur-text { color: var(--kpi-gray); font-size: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="kpi-page">
+
+{# ── Toolbar ──────────────────────────────────────────────────────────────── #}
+<div class="kpi-toolbar">
+  <div class="kpi-toolbar-title">
+    <i class="fas fa-chart-pie" style="color:var(--kpi-blue);"></i>
+    KPI Dashboard
+  </div>
+
+  {# Period buttons — hidden when custom range is active #}
+  {% if not date_from and not date_to %}
+    {% for p, label in periods %}
+      <a href="?period={{ p }}{% if test_id %}&test_id={{ test_id }}{% endif %}"
+         class="kpi-period-btn {% if period == p %}active{% endif %}">
+        {{ label }}
+      </a>
+    {% endfor %}
+  {% else %}
+    <span class="kpi-period-btn active" style="cursor:default;">
+      <i class="fas fa-calendar-alt" style="margin-right:4px;"></i>
+      Произвольный диапазон
+    </span>
+    <a href="?period=all{% if test_id %}&test_id={{ test_id }}{% endif %}"
+       class="kpi-period-btn" title="Сбросить даты" style="color:#dc2626;border-color:#dc2626;">
+      <i class="fas fa-times"></i> Сбросить
+    </a>
+  {% endif %}
+
+  {# ── Date range form ──────────────────────────────────────────────────── #}
+  <form method="get" id="kpi-filter-form" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    {# preserve test_id when submitting date form #}
+    {% if test_id %}<input type="hidden" name="test_id" value="{{ test_id }}">{% endif %}
+
+    <div class="kpi-date-group">
+      <label class="kpi-date-label">С</label>
+      <input type="date" name="date_from" value="{{ date_from }}"
+             class="kpi-date-input" id="id_date_from"
+             max="{{ date_to }}"
+             onchange="document.getElementById('kpi-filter-form').submit()">
+    </div>
+
+    <div class="kpi-date-group">
+      <label class="kpi-date-label">По</label>
+      <input type="date" name="date_to" value="{{ date_to }}"
+             class="kpi-date-input" id="id_date_to"
+             min="{{ date_from }}"
+             onchange="document.getElementById('kpi-filter-form').submit()">
+    </div>
+
+    {# Test filter #}
+    <select name="test_id" class="kpi-select" onchange="this.form.submit()">
+      <option value="">Все тесты</option>
+      {% for t in data.all_tests %}
+        <option value="{{ t.id }}" {% if test_id == t.id|stringformat:"s" %}selected{% endif %}>
+          {{ t.title }}
+        </option>
+      {% endfor %}
+    </select>
+  </form>
+
+  {# Export — forwards all active filters #}
+  <a href="{% url 'admin:testing_kpi_export' %}?period={{ period }}{% if test_id %}&test_id={{ test_id }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}"
+     class="kpi-export-btn">
+    <i class="fas fa-file-excel"></i> Экспорт Excel
+  </a>
+
+  <div class="kpi-cache-note">
+    <i class="fas fa-clock"></i> Кэш 5 мин
+  </div>
+</div>
+
+{# ── Summary Cards ────────────────────────────────────────────────────────── #}
+<div class="kpi-section-title">
+  <i class="fas fa-tachometer-alt" style="color:var(--kpi-blue);"></i>
+  Общая сводка
+</div>
+
+{% with s=data.summary %}
+<div class="kpi-cards">
+  <div class="kpi-card" style="--card-accent:#2563eb;">
+    <div class="kpi-card-icon"><i class="fas fa-book-open"></i></div>
+    <div class="kpi-card-num">{{ s.total_tests }}</div>
+    <div class="kpi-card-label">Тестов</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#7c3aed;">
+    <div class="kpi-card-icon"><i class="fas fa-question-circle"></i></div>
+    <div class="kpi-card-num">{{ s.total_questions }}</div>
+    <div class="kpi-card-label">Вопросов</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#0891b2;">
+    <div class="kpi-card-icon"><i class="fas fa-clock"></i></div>
+    <div class="kpi-card-num">{{ s.total_sessions }}</div>
+    <div class="kpi-card-label">Сессий</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#059669;">
+    <div class="kpi-card-icon"><i class="fas fa-play-circle"></i></div>
+    <div class="kpi-card-num">{{ s.active_sessions }}</div>
+    <div class="kpi-card-label">Активных сессий</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#64748b;">
+    <div class="kpi-card-icon"><i class="fas fa-check-circle"></i></div>
+    <div class="kpi-card-num">{{ s.done_sessions }}</div>
+    <div class="kpi-card-label">Завершённых сессий</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#d97706;">
+    <div class="kpi-card-icon"><i class="fas fa-users"></i></div>
+    <div class="kpi-card-num">{{ s.total_students }}</div>
+    <div class="kpi-card-label">Студентов</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#1f4e79;">
+    <div class="kpi-card-icon"><i class="fas fa-redo"></i></div>
+    <div class="kpi-card-num">{{ s.total_attempts }}</div>
+    <div class="kpi-card-label">Попыток всего</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#059669;">
+    <div class="kpi-card-icon"><i class="fas fa-flag-checkered"></i></div>
+    <div class="kpi-card-num">{{ s.done_attempts }}</div>
+    <div class="kpi-card-label">Завершено</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#dc2626;">
+    <div class="kpi-card-icon"><i class="fas fa-hourglass-end"></i></div>
+    <div class="kpi-card-num">{{ s.expired_attempts }}</div>
+    <div class="kpi-card-label">Просрочено</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#2563eb;">
+    <div class="kpi-card-icon"><i class="fas fa-star"></i></div>
+    <div class="kpi-card-num">{{ s.avg_score }}</div>
+    <div class="kpi-card-label">Средний балл</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#059669;">
+    <div class="kpi-card-icon"><i class="fas fa-trophy"></i></div>
+    <div class="kpi-card-num">{{ s.max_score }}</div>
+    <div class="kpi-card-label">Максимум</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#dc2626;">
+    <div class="kpi-card-icon"><i class="fas fa-arrow-down"></i></div>
+    <div class="kpi-card-num">{{ s.min_score }}</div>
+    <div class="kpi-card-label">Минимум</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#7c3aed;">
+    <div class="kpi-card-icon"><i class="fas fa-robot"></i></div>
+    <div class="kpi-card-num">{{ s.ai_checks }}</div>
+    <div class="kpi-card-label">AI проверок</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#0891b2;">
+    <div class="kpi-card-icon"><i class="fas fa-bolt"></i></div>
+    <div class="kpi-card-num">{{ s.auto_checks }}</div>
+    <div class="kpi-card-label">Авто проверок</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#d97706;">
+    <div class="kpi-card-icon"><i class="fas fa-hand-paper"></i></div>
+    <div class="kpi-card-num">{{ s.manual_checks }}</div>
+    <div class="kpi-card-label">Ручных проверок</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#dc2626;">
+    <div class="kpi-card-icon"><i class="fas fa-exclamation-triangle"></i></div>
+    <div class="kpi-card-num">{{ s.failed_ai }}</div>
+    <div class="kpi-card-label">Провалено AI</div>
+  </div>
+</div>
+{% endwith %}
+
+{# ── Breakdown Section ────────────────────────────────────────────────────── #}
+<div class="kpi-section-title">
+  <i class="fas fa-layer-group" style="color:var(--kpi-purple);"></i>
+  Разбивка по типам
+</div>
+
+<div class="kpi-breakdown-grid">
+
+  {# Session types #}
+  {% for st in data.session_types %}
+  <div class="kpi-breakdown-card">
+    <h4>
+      {% if st.session_type == "exam" %}
+        <i class="fas fa-graduation-cap" style="color:#dc2626;"></i> Экзамен
+      {% else %}
+        <i class="fas fa-dumbbell" style="color:#7c3aed;"></i> Тренажёр
+      {% endif %}
+    </h4>
+    <div class="kpi-breakdown-row">
+      <span class="label">Сессий</span>
+      <span class="value">{{ st.sessions }}</span>
+    </div>
+    <div class="kpi-breakdown-row">
+      <span class="label">Студентов</span>
+      <span class="value">{{ st.students }}</span>
+    </div>
+    <div class="kpi-breakdown-row">
+      <span class="label">Попыток</span>
+      <span class="value">{{ st.attempts }}</span>
+    </div>
+    <div class="kpi-breakdown-row">
+      <span class="label">Средний балл</span>
+      <span class="value">{{ st.avg_score }}</span>
+    </div>
+    <div class="kpi-breakdown-row">
+      <span class="label">% прохождения</span>
+      <span class="value" style="color:{% if st.pass_rate >= 75 %}#059669{% elif st.pass_rate >= 50 %}#d97706{% else %}#dc2626{% endif %};">
+        {{ st.pass_rate }}%
+      </span>
+    </div>
+    <div class="kpi-prog-bar">
+      <div class="kpi-prog-fill" style="width:{{ st.pass_rate }}%;"></div>
+    </div>
+  </div>
+  {% endfor %}
+
+  {# Difficulty breakdown #}
+  <div class="kpi-breakdown-card">
+    <h4><i class="fas fa-signal" style="color:#d97706;"></i> По сложности</h4>
+    {% for d in data.difficulties %}
+    <div class="kpi-breakdown-row">
+      <span class="label">
+        {% if d.difficulty == "easy" %}🟢 Лёгкий
+        {% elif d.difficulty == "medium" %}🟡 Средний
+        {% else %}🔴 Сложный{% endif %}
+      </span>
+      <span class="value">{{ d.count }} <span style="color:var(--kpi-gray);font-weight:400;">({{ d.percent }}%)</span></span>
+    </div>
+    {% endfor %}
+  </div>
+
+  {# Question types #}
+  <div class="kpi-breakdown-card">
+    <h4><i class="fas fa-list-ul" style="color:#0891b2;"></i> По типам вопросов</h4>
+    {% for qt in data.question_types %}
+    <div class="kpi-breakdown-row">
+      <span class="label">
+        {% if qt.question_type == "single_choice" %}☑ Один вариант
+        {% elif qt.question_type == "multiple_choice" %}☑☑ Несколько
+        {% elif qt.question_type == "text" %}📝 Текст
+        {% else %}💻 Код{% endif %}
+      </span>
+      <span class="value">{{ qt.count }} <span style="color:var(--kpi-gray);font-weight:400;">({{ qt.percent }}%)</span></span>
+    </div>
+    {% endfor %}
+  </div>
+
+  {# Languages #}
+  {% if data.languages %}
+  <div class="kpi-breakdown-card">
+    <h4><i class="fas fa-code" style="color:#059669;"></i> Языки программирования</h4>
+    {% for lang in data.languages %}
+    <div class="kpi-breakdown-row">
+      <span class="label">{{ lang.language|capfirst }}</span>
+      <span class="value">{{ lang.count }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+
+{# ── Charts ───────────────────────────────────────────────────────────────── #}
+<div class="kpi-section-title">
+  <i class="fas fa-chart-line" style="color:var(--kpi-teal);"></i>
+  Графики
+</div>
+
+<div class="kpi-charts-grid">
+
+  <div class="kpi-chart-card">
+    <h4><i class="fas fa-chart-bar" style="color:var(--kpi-blue);"></i> Попытки по дням</h4>
+    <canvas id="chartAttempts"></canvas>
+  </div>
+
+  <div class="kpi-chart-card">
+    <h4><i class="fas fa-chart-line" style="color:var(--kpi-green);"></i> Средний балл по дням</h4>
+    <canvas id="chartScores"></canvas>
+  </div>
+
+  <div class="kpi-chart-card">
+    <h4><i class="fas fa-chart-pie" style="color:var(--kpi-purple);"></i> Типы вопросов</h4>
+    <canvas id="chartQTypes"></canvas>
+  </div>
+
+  <div class="kpi-chart-card">
+    <h4><i class="fas fa-chart-pie" style="color:var(--kpi-orange);"></i> Сложность вопросов</h4>
+    <canvas id="chartDifficulty"></canvas>
+  </div>
+
+  {% if data.languages %}
+  <div class="kpi-chart-card" style="grid-column: 1/-1;">
+    <h4><i class="fas fa-chart-bar" style="color:var(--kpi-green);"></i> Code-вопросы по языкам</h4>
+    <canvas id="chartLangs" style="max-height:200px;"></canvas>
+  </div>
+  {% endif %}
+
+</div>
+
+{# ── Top Students ─────────────────────────────────────────────────────────── #}
+<div class="kpi-section-title">
+  <i class="fas fa-medal" style="color:var(--kpi-orange);"></i>
+  Топ-10 по баллу
+</div>
+
+<div class="kpi-table-wrap">
+  <table class="kpi-table">
+    <thead>
+      <tr>
+        <th>Место</th>
+        <th>Студент</th>
+        <th>Попыток</th>
+        <th>Средний балл</th>
+        <th>Лучший балл</th>
+        <th>Последняя активность</th>
+        <th>Сред. время</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for st in data.top_students %}
+      <tr>
+        <td>
+          <span class="rank-medal">
+            {% if forloop.counter == 1 %}🥇
+            {% elif forloop.counter == 2 %}🥈
+            {% elif forloop.counter == 3 %}🥉
+            {% else %}{{ forloop.counter }}{% endif %}
+          </span>
+        </td>
+        <td><strong>{{ st.student_name }}</strong></td>
+        <td>{{ st.attempts }}</td>
+        <td>
+          <span class="score-badge {% if st.avg_score >= 75 %}score-high{% elif st.avg_score >= 50 %}score-mid{% else %}score-low{% endif %}">
+            {{ st.avg_score }}%
+          </span>
+        </td>
+        <td>
+          <span class="score-badge {% if st.best_score >= 75 %}score-high{% elif st.best_score >= 50 %}score-mid{% else %}score-low{% endif %}">
+            {{ st.best_score }}%
+          </span>
+        </td>
+        <td class="dur-text">{{ st.last_activity|date:"d.m.Y H:i" }}</td>
+        <td class="dur-text">
+          {% if st.avg_dur_secs %}
+            {% with m=st.avg_dur_secs|divisibleby:60 %}
+              {{ st.avg_dur_secs|floatformat:0 }}с
+            {% endwith %}
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" style="text-align:center; color:var(--kpi-gray); padding:24px;">Данных нет</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# ── Most Active Students ─────────────────────────────────────────────────── #}
+<div class="kpi-section-title">
+  <i class="fas fa-fire" style="color:var(--kpi-red);"></i>
+  Топ-10 по активности
+</div>
+
+<div class="kpi-table-wrap">
+  <table class="kpi-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Студент</th>
+        <th>Попыток</th>
+        <th>Средний балл</th>
+        <th>Лучший балл</th>
+        <th>Последняя активность</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for st in data.active_students %}
+      <tr>
+        <td style="color:var(--kpi-gray);">{{ forloop.counter }}</td>
+        <td><strong>{{ st.student_name }}</strong></td>
+        <td><strong style="color:var(--kpi-blue);">{{ st.attempts }}</strong></td>
+        <td>
+          <span class="score-badge {% if st.avg_score >= 75 %}score-high{% elif st.avg_score >= 50 %}score-mid{% else %}score-low{% endif %}">
+            {{ st.avg_score }}%
+          </span>
+        </td>
+        <td>{{ st.best_score }}%</td>
+        <td class="dur-text">{{ st.last_activity|date:"d.m.Y H:i" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" style="text-align:center; color:var(--kpi-gray); padding:24px;">Данных нет</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# ── Tests KPI ────────────────────────────────────────────────────────────── #}
+<div class="kpi-section-title">
+  <i class="fas fa-book-open" style="color:var(--kpi-navy);"></i>
+  KPI по тестам
+</div>
+
+<div class="kpi-table-wrap">
+  <table class="kpi-table">
+    <thead>
+      <tr>
+        <th>Тест</th>
+        <th>Вопросов</th>
+        <th>Сессий</th>
+        <th>Попыток</th>
+        <th>Сред. балл</th>
+        <th>Лучший</th>
+        <th>% прохождения</th>
+        <th>Прошли</th>
+        <th>Провалили</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in data.tests_kpi %}
+      <tr>
+        <td><strong>{{ t.test_title }}</strong></td>
+        <td>{{ t.questions }}</td>
+        <td>{{ t.sessions }}</td>
+        <td>{{ t.total_attempts }}</td>
+        <td>
+          <span class="score-badge {% if t.avg_score >= 75 %}score-high{% elif t.avg_score >= 50 %}score-mid{% else %}score-low{% endif %}">
+            {{ t.avg_score }}%
+          </span>
+        </td>
+        <td>{{ t.best_score }}%</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="kpi-prog-bar" style="flex:1;height:6px;">
+              <div class="kpi-prog-fill" style="width:{{ t.pass_rate }}%;"></div>
+            </div>
+            <span style="font-size:12px;font-weight:700;color:{% if t.pass_rate >= 75 %}#059669{% elif t.pass_rate >= 50 %}#d97706{% else %}#dc2626{% endif %};">
+              {{ t.pass_rate }}%
+            </span>
+          </div>
+        </td>
+        <td style="color:#059669;font-weight:700;">{{ t.passed }}</td>
+        <td style="color:#dc2626;font-weight:700;">{{ t.failed }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" style="text-align:center; color:var(--kpi-gray); padding:24px;">Данных нет</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# ── AI Grading KPI ───────────────────────────────────────────────────────── #}
+<div class="kpi-section-title">
+  <i class="fas fa-robot" style="color:var(--kpi-purple);"></i>
+  KPI по AI проверке
+</div>
+
+{% with ai=data.ai_kpi %}
+<div class="kpi-cards" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));">
+  <div class="kpi-card" style="--card-accent:#94a3b8;">
+    <div class="kpi-card-icon"><span class="ai-status-dot dot-pending"></span></div>
+    <div class="kpi-card-num">{{ ai.pending }}</div>
+    <div class="kpi-card-label">Ожидают проверки</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#f59e0b;">
+    <div class="kpi-card-icon"><span class="ai-status-dot dot-processing"></span></div>
+    <div class="kpi-card-num">{{ ai.processing }}</div>
+    <div class="kpi-card-label">Обрабатывается</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#059669;">
+    <div class="kpi-card-icon"><span class="ai-status-dot dot-done"></span></div>
+    <div class="kpi-card-num">{{ ai.done }}</div>
+    <div class="kpi-card-label">Готово</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#dc2626;">
+    <div class="kpi-card-icon"><span class="ai-status-dot dot-failed"></span></div>
+    <div class="kpi-card-num">{{ ai.failed }}</div>
+    <div class="kpi-card-label">Ошибка AI</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#7c3aed;">
+    <div class="kpi-card-icon"><i class="fas fa-star"></i></div>
+    <div class="kpi-card-num">{{ ai.avg_ai_score }}</div>
+    <div class="kpi-card-label">Сред. AI оценка</div>
+  </div>
+  <div class="kpi-card" style="--card-accent:#0891b2;">
+    <div class="kpi-card-icon"><i class="fas fa-percent"></i></div>
+    <div class="kpi-card-num">{{ ai.avg_confidence }}</div>
+    <div class="kpi-card-label">Сред. уверенность</div>
+  </div>
+</div>
+{% endwith %}
+
+<div style="height:40px;"></div>
+
+</div>{# /kpi-page #}
+
+{# ── Chart.js scripts ─────────────────────────────────────────────────────── #}
+<script>
+(function () {
+
+  const PALETTE = [
+    '#2563eb','#059669','#d97706','#dc2626',
+    '#7c3aed','#0891b2','#1f4e79','#64748b',
+    '#10b981','#f59e0b',
+  ];
+
+  function lineChart(id, labels, values, label, color) {
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label,
+          data: values,
+          borderColor: color,
+          backgroundColor: color + '22',
+          borderWidth: 2.5,
+          pointRadius: 3,
+          tension: 0.35,
+          fill: true,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+          x: { grid: { display: false }, ticks: { maxRotation: 45 } },
+        },
+      },
+    });
+  }
+
+  function doughnutChart(id, labels, values) {
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: PALETTE.slice(0, values.length),
+          borderWidth: 2,
+          borderColor: '#fff',
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'right', labels: { boxWidth: 12, font: { size: 12 } } },
+        },
+        cutout: '62%',
+      },
+    });
+  }
+
+  function barChart(id, labels, values, color) {
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: PALETTE.slice(0, values.length),
+          borderRadius: 6,
+          borderSkipped: false,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+          x: { grid: { display: false } },
+        },
+      },
+    });
+  }
+
+  // ── Attempts per day
+  const attData = {{ chart_attempts_json|safe }};
+  lineChart(
+    'chartAttempts',
+    attData.map(r => r.day),
+    attData.map(r => r.count),
+    'Попытки',
+    '#2563eb'
+  );
+
+  // ── Avg score per day
+  const scData = {{ chart_scores_json|safe }};
+  lineChart(
+    'chartScores',
+    scData.map(r => r.day),
+    scData.map(r => r.avg),
+    'Средний балл',
+    '#059669'
+  );
+
+  // ── Question types pie
+  const qtData = {{ question_types_json|safe }};
+  const qtLabels = {
+    single_choice: 'Один вариант',
+    multiple_choice: 'Несколько',
+    text: 'Текст',
+    code: 'Код',
+  };
+  doughnutChart(
+    'chartQTypes',
+    qtData.map(r => qtLabels[r.question_type] || r.question_type),
+    qtData.map(r => r.count)
+  );
+
+  // ── Difficulty pie
+  const diffData = {{ difficulties_json|safe }};
+  const diffLabels = { easy: 'Лёгкий', medium: 'Средний', hard: 'Сложный' };
+  doughnutChart(
+    'chartDifficulty',
+    diffData.map(r => diffLabels[r.difficulty] || r.difficulty),
+    diffData.map(r => r.count)
+  );
+
+  // ── Languages bar
+  const langData = {{ languages_json|safe }};
+  if (langData.length) {
+    barChart(
+      'chartLangs',
+      langData.map(r => r.language.charAt(0).toUpperCase() + r.language.slice(1)),
+      langData.map(r => r.count),
+      '#059669'
+    );
+  }
+
+})();
+</script>
+{% endblock %}

@@ -13,9 +13,11 @@ from drf_spectacular.views import (
 def health_check(request):
     return JsonResponse({'status': 'ok'})
 
+from apps.testing.admin import kpi_dashboard_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('admin/testing/kpi/', kpi_dashboard_view, name='testing-kpi-dashboard'),
     path('nested_admin/', include('nested_admin.urls')),
 
     # Health
@@ -28,6 +30,7 @@ urlpatterns = [
 
     # path('api/v1/', include('apps.your_app.urls')),
     path('', include('apps.testing.urls')),
+
 ]
 
 if settings.DEBUG:

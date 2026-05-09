@@ -681,3 +681,129 @@ admin.site.unregister(SolarSchedule)
 admin.site.unregister(CrontabSchedule)
 admin.site.unregister(Group)
 admin.site.unregister(User)
+
+
+"""
+Append this block to the bottom of backend/apps/testing/admin.py
+(after the existing unregister calls).
+
+It adds:
+  - KPIDashboardView  → custom AdminView accessible at /admin/testing/kpi/
+  - KPIExportView     → Excel export at /admin/testing/kpi/export/
+  - Monkey-patches admin URLs via AdminSite.get_urls() override
+
+Usage:
+  1. Copy this entire block into admin.py (below the unregister block).
+  2. Add the URL path to config/urls.py is NOT needed — it registers via get_urls().
+  3. Optionally add a sidebar link in JAZZMIN_SETTINGS["custom_links"]["testing"].
+"""
+import json as _json
+from django.contrib.admin.views.decorators import staff_member_required as _smd
+from django.http import HttpResponse as _HR, JsonResponse as _JR
+from django.urls import path as _path
+from django.shortcuts import render as _render
+from django.contrib.admin import site as _site
+from django.views.decorators.http import require_GET as _get
+from django.utils.decorators import method_decorator as _md
+
+
+# ── KPI Dashboard view ────────────────────────────────────────────────────────
+
+@_smd
+def kpi_dashboard_view(request):
+    from apps.testing.services.kpi_service import KPIService, KPIFilters
+
+    period = request.GET.get("period", "all")
+    test_id = request.GET.get("test_id") or None
+    date_from = request.GET.get("date_from", "").strip() or None
+    date_to = request.GET.get("date_to", "").strip() or None
+
+    if period not in ("today", "7d", "30d", "all", "custom"):
+        period = "all"
+
+    # If custom dates are provided, switch period label to "custom"
+    if date_from or date_to:
+        period = "custom"
+
+    filters = KPIFilters(
+        period=period,
+        test_id=test_id,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    data = KPIService.get_dashboard(filters)
+
+    ctx = {
+        **_site.each_context(request),
+        "title": "KPI Dashboard",
+        "data": data,
+        "filters": filters,
+        "period": period,
+        "test_id": test_id or "",
+        "date_from": date_from or "",
+        "date_to": date_to or "",
+        "periods": [
+            ("today", "Сегодня"),
+            ("7d", "7 дней"),
+            ("30d", "30 дней"),
+            ("all", "Всё время"),
+        ],
+        "chart_attempts_json": _json.dumps(data["chart_attempts"]),
+        "chart_scores_json": _json.dumps(data["chart_scores"]),
+        "question_types_json": _json.dumps(data["question_types"]),
+        "difficulties_json": _json.dumps(data["difficulties"]),
+        "languages_json": _json.dumps(data["languages"]),
+        "opts": _FakeOpts(),
+    }
+    return _render(request, "admin/testing/kpi_dashboard.html", ctx)
+
+
+# ── KPI Excel export view ─────────────────────────────────────────────────────
+
+@_smd
+def kpi_export_view(request):
+    from apps.testing.services.kpi_service import KPIService, KPIFilters, export_kpi_excel
+
+    period = request.GET.get("period", "all")
+    test_id = request.GET.get("test_id") or None
+    date_from = request.GET.get("date_from", "").strip() or None
+    date_to = request.GET.get("date_to", "").strip() or None
+    if date_from or date_to:
+        period = "custom"
+
+    filters = KPIFilters(period=period, test_id=test_id, date_from=date_from, date_to=date_to)
+    data = KPIService.get_dashboard(filters)
+    xlsx = export_kpi_excel(data)
+
+    label = f"{date_from or ''}__{date_to or ''}" if filters.is_custom_range else period
+    resp = _HR(
+        xlsx,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    resp["Content-Disposition"] = f'attachment; filename="kpi_{label}.xlsx"'
+    return resp
+
+
+# ── Fake opts for breadcrumbs ─────────────────────────────────────────────────
+
+class _FakeOpts:
+    app_label = "testing"
+    model_name = "kpidashboard"
+    verbose_name = "KPI Dashboard"
+    verbose_name_plural = "KPI Dashboard"
+
+
+# ── Register custom URLs on Django Admin ──────────────────────────────────────
+
+_original_get_urls = _site.__class__.get_urls
+
+
+def _patched_get_urls(self):
+    custom = [
+        _path("testing/kpi/", kpi_dashboard_view, name="testing_kpi_dashboard"),
+        _path("testing/kpi/export/", kpi_export_view, name="testing_kpi_export"),
+    ]
+    return custom + _original_get_urls(self)
+
+
+_site.__class__.get_urls = _patched_get_urls# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

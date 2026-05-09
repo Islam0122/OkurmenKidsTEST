@@ -169,6 +169,7 @@ JAZZMIN_SETTINGS = {
     "topmenu_links": [
         {"name": "Сайт",     "url": "/",                          "new_window": True},
         {"name": "API Docs", "url": "/api/schema/swagger-ui/",    "new_window": True},
+        {"name": "KPI Dashboard", "url": "/admin/testing/kpi/", "new_window": False},
 
     ],
 
@@ -188,8 +189,16 @@ JAZZMIN_SETTINGS = {
                 "icon":        "fas fa-file-download",
                 "permissions": ["auth.change_user"],
             },
+            {
+      "name":        "KPI Dashboard",
+      "url":         "/admin/testing/kpi/",
+      "icon":        "fas fa-chart-pie",
+      "permissions": ["auth.change_user"],
+            }
         ],
     },
+
+
 
     "icons": {
         "auth":                        "fas fa-users-cog",
