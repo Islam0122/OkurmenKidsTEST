@@ -442,7 +442,7 @@ class TestSessionAdmin(admin.ModelAdmin):
         return True
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        return True
 
     def session_label(self, obj):
         if obj.title:
@@ -618,7 +618,7 @@ class AnswerAdmin(admin.ModelAdmin):
         return False
 
     def has_change_permission(self, request, obj=None):
-        return False
+        return True
 
     def student_name(self, obj):
         return obj.attempt.student_name if obj and obj.attempt_id else '—'
