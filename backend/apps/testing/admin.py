@@ -809,16 +809,56 @@ def _patched_get_urls(self):
 _site.__class__.get_urls = _patched_get_urls# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
+
+
 from django.contrib.admin import site as _admin_site
 from django.urls import path as _path
 
-from .analytics.views import session_list_view, session_detail_view, session_export_view
+from .analytics.views import (
+    session_list_view,
+    session_detail_view,
+    session_export_view,
+    multi_session_analytics_view,
+    multi_session_export_view,
+)
 
 
-_orig_get_urls = _admin_site.__class__.get_urls
+from django.contrib import admin as _admin
+from django.http import HttpResponseRedirect as _Redirect
+from django.contrib import messages as _messages
 
 
-def _patched_get_urls(self):
+def analyze_selected_sessions(modeladmin, request, queryset):
+    """
+    Admin action on TestSession change list.
+    Redirects to the multi-session analytics page with the selected IDs.
+    """
+    ids = list(queryset.values_list("id", flat=True))
+    if not ids:
+        modeladmin.message_user(request, "Не выбрано ни одной сессии.", _messages.WARNING)
+        return
+
+    ids_csv = ",".join(str(i) for i in ids)
+    return _Redirect(f"/admin/analytics/multi/?sessions={ids_csv}")
+
+
+analyze_selected_sessions.short_description = "📊 Мультисессионная аналитика"
+
+
+try:
+    from apps.testing.admin import TestSessionAdmin as _TSA
+    if analyze_selected_sessions not in (_TSA.actions or []):
+        _TSA.actions = list(_TSA.actions or []) + [analyze_selected_sessions]
+except Exception:
+    pass   # guard against circular import during migrations
+
+
+# ── URL registration ──────────────────────────────────────────────────────────
+
+_orig_get_urls_analytics = _admin_site.__class__.get_urls
+
+
+def _patched_get_urls_analytics(self):
     custom = [
         _path(
             "analytics/sessions/",
@@ -835,8 +875,19 @@ def _patched_get_urls(self):
             session_export_view,
             name="analytics_session_export",
         ),
+        # ── Multi-session ──────────────────────────────────────────────────
+        _path(
+            "analytics/multi/",
+            multi_session_analytics_view,
+            name="analytics_multi",
+        ),
+        _path(
+            "analytics/multi/export/",
+            multi_session_export_view,
+            name="analytics_multi_export",
+        ),
     ]
-    return custom + _orig_get_urls(self)
+    return custom + _orig_get_urls_analytics(self)
 
 
-_admin_site.__class__.get_urls = _patched_get_urls
+_admin_site.__class__.get_urls = _patched_get_urls_analytics

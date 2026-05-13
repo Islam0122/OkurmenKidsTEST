@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.admin import site as _admin_site
+from django.db.models import Q          # ← single import, no re-import inside views
 from django.http import HttpResponse
 from django.shortcuts import render
 
@@ -13,46 +14,40 @@ from .selectors import (
     get_session_ranking,
     get_question_breakdown,
 )
+from .aggregations import (
+    get_multi_session_kpis,
+    get_multi_session_ranking,
+    get_multi_session_question_breakdown,
+)
 
 
+# ── Shared helpers ────────────────────────────────────────────────────────────
 
 class _FakeOpts:
     """Minimal opts shim for Jazzmin breadcrumb rendering."""
-    app_label = "analytics"
-    model_name = "sessionanalytics"
-    verbose_name = "Аналитика сессий"
+    app_label           = "analytics"
+    model_name          = "sessionanalytics"
+    verbose_name        = "Аналитика сессий"
     verbose_name_plural = "Аналитика сессий"
 
 
 def _fmt_duration(seconds: int | None) -> str:
-    """Convert raw seconds → human-readable «Xм Yс»."""
     if seconds is None:
         return "—"
     m, s = divmod(int(seconds), 60)
-    if m:
-        return f"{m}м {s}с"
-    return f"{s}с"
+    return f"{m}м {s}с" if m else f"{s}с"
 
 
+# ── View 1: Session list ──────────────────────────────────────────────────────
 
 @staff_member_required
 def session_list_view(request):
     """
     GET /admin/analytics/sessions/
-    Shows all sessions as a sortable, filterable table.
-    Each row links to the detail/ranking page.
+    Shows all sessions as a sortable, filterable table with checkboxes for
+    multi-session selection.
     """
-    sessions = get_sessions_for_selector()
-
-    # Simple server-side search
     q = request.GET.get("q", "").strip()
-    if q:
-        sessions = sessions.filter(
-            Q(title__icontains=q) | Q(test__title__icontains=q) | Q(key__icontains=q)
-        )
-
-    # Avoid circular import — Q imported at module level elsewhere
-    from django.db.models import Q  # local here is fine, pure query helper
 
     sessions_qs = get_sessions_for_selector()
     if q:
@@ -62,8 +57,7 @@ def session_list_view(request):
             | Q(key__icontains=q)
         )
 
-    # Simple pagination (no Django Paginator to keep template simple)
-    session_list = list(sessions_qs[:200])  # cap at 200 rows
+    session_list = list(sessions_qs[:200])
 
     ctx = {
         **_admin_site.each_context(request),
@@ -75,29 +69,26 @@ def session_list_view(request):
     return render(request, "admin/analytics/session_list.html", ctx)
 
 
-# ── View 2: Session detail — KPI + Ranking + Question breakdown ───────────────
+# ── View 2: Single session detail ─────────────────────────────────────────────
 
 @staff_member_required
 def session_detail_view(request, session_id: str):
     """
     GET /admin/analytics/sessions/<session_id>/
-    KPI cards, student ranking table, question correctness breakdown.
     """
     kpis = get_session_kpis(str(session_id))
     if not kpis:
         from django.http import Http404
         raise Http404("Session not found.")
 
-    ranking = get_session_ranking(str(session_id))
+    ranking   = get_session_ranking(str(session_id))
     breakdown = get_question_breakdown(str(session_id))
 
-    # Enrich ranking rows with formatted duration
     for row in ranking:
         row["duration_fmt"] = _fmt_duration(row["duration_seconds"])
 
     kpis["avg_duration_fmt"] = _fmt_duration(kpis.get("avg_duration_seconds"))
 
-    # Build score distribution buckets for a small bar chart
     score_buckets = _score_distribution(str(session_id))
 
     ctx = {
@@ -113,25 +104,24 @@ def session_detail_view(request, session_id: str):
     return render(request, "admin/analytics/session_detail.html", ctx)
 
 
-# ── Excel export ──────────────────────────────────────────────────────────────
+# ── View 3: Single session Excel export ───────────────────────────────────────
 
 @staff_member_required
 def session_export_view(request, session_id: str):
     """
     GET /admin/analytics/sessions/<session_id>/export/
-    Download ranking + KPIs as .xlsx
     """
     kpis = get_session_kpis(str(session_id))
     if not kpis:
         from django.http import Http404
         raise Http404("Session not found.")
 
-    ranking = get_session_ranking(str(session_id))
+    ranking   = get_session_ranking(str(session_id))
     breakdown = get_question_breakdown(str(session_id))
+    xlsx      = _build_excel(kpis, ranking, breakdown)
 
-    xlsx = _build_excel(kpis, ranking, breakdown)
     label = kpis["session_title"][:30]
-    resp = HttpResponse(
+    resp  = HttpResponse(
         xlsx,
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
@@ -139,13 +129,125 @@ def session_export_view(request, session_id: str):
     return resp
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ── View 4: Multi-session analytics ──────────────────────────────────────────
+
+@staff_member_required
+def multi_session_analytics_view(request):
+    """
+    GET /admin/analytics/multi/?sessions=<id1>,<id2>,...
+        &date_from=YYYY-MM-DD&date_to=YYYY-MM-DD
+        &test_id=<uuid>&session_type=exam|training
+        &status=active|finished&min_score=0&max_score=100
+        &dedup=best|all        (default: best)
+
+    Aggregates statistics across all selected sessions.
+    """
+    from .services import MultiSessionService, MultiSessionFilters
+
+    # ── Parse session IDs ──────────────────────────────────────────────────
+    raw_ids    = request.GET.get("sessions", "").strip()
+    session_ids = [s.strip() for s in raw_ids.split(",") if s.strip()]
+
+    if not session_ids:
+        # Redirect to session list if nothing selected
+        ctx = {
+            **_admin_site.each_context(request),
+            "title": "Мультисессионная аналитика",
+            "opts": _FakeOpts(),
+            "no_sessions": True,
+            "sessions": list(get_sessions_for_selector()[:200]),
+        }
+        return render(request, "admin/analytics/multi_analytics.html", ctx)
+
+    # ── Build filters ──────────────────────────────────────────────────────
+    filters = MultiSessionFilters(
+        session_ids  = session_ids,
+        date_from    = request.GET.get("date_from", "").strip() or None,
+        date_to      = request.GET.get("date_to",   "").strip() or None,
+        test_id      = request.GET.get("test_id",   "").strip() or None,
+        session_type = request.GET.get("session_type", "").strip() or None,
+        status       = request.GET.get("status",    "").strip() or None,
+        min_score    = _safe_float(request.GET.get("min_score")),
+        max_score    = _safe_float(request.GET.get("max_score")),
+        dedup_mode   = request.GET.get("dedup", "best"),   # "best" | "all"
+    )
+
+    data = MultiSessionService.get_analytics(filters)
+
+    # Enrich ranking with formatted duration
+    for row in data["ranking"]:
+        row["duration_fmt"] = _fmt_duration(row.get("duration_seconds"))
+
+    data["kpis"]["avg_duration_fmt"] = _fmt_duration(
+        data["kpis"].get("avg_duration_seconds")
+    )
+
+    ctx = {
+        **_admin_site.each_context(request),
+        "title": f"Мультисессионная аналитика ({len(session_ids)} сессий)",
+        "opts": _FakeOpts(),
+        "data": data,
+        "filters": filters,
+        "session_ids_csv": raw_ids,
+        "score_buckets_json": json.dumps(data.get("score_buckets", [])),
+        "score_by_session_json": json.dumps(data.get("score_by_session", [])),
+        "attempts_by_day_json": json.dumps(data.get("attempts_by_day", [])),
+    }
+    return render(request, "admin/analytics/multi_analytics.html", ctx)
+
+
+# ── View 5: Multi-session Excel export ────────────────────────────────────────
+
+@staff_member_required
+def multi_session_export_view(request):
+    """
+    GET /admin/analytics/multi/export/?sessions=<id1>,<id2>,...&dedup=best
+    """
+    from .services import MultiSessionService, MultiSessionFilters
+    from .aggregations import build_multi_excel
+
+    raw_ids     = request.GET.get("sessions", "").strip()
+    session_ids = [s.strip() for s in raw_ids.split(",") if s.strip()]
+
+    if not session_ids:
+        from django.http import Http404
+        raise Http404("No sessions specified.")
+
+    filters = MultiSessionFilters(
+        session_ids  = session_ids,
+        date_from    = request.GET.get("date_from", "").strip() or None,
+        date_to      = request.GET.get("date_to",   "").strip() or None,
+        test_id      = request.GET.get("test_id",   "").strip() or None,
+        session_type = request.GET.get("session_type", "").strip() or None,
+        status       = request.GET.get("status",    "").strip() or None,
+        min_score    = _safe_float(request.GET.get("min_score")),
+        max_score    = _safe_float(request.GET.get("max_score")),
+        dedup_mode   = request.GET.get("dedup", "best"),
+    )
+
+    data = MultiSessionService.get_analytics(filters)
+    xlsx = build_multi_excel(data, filters)
+
+    resp = HttpResponse(
+        xlsx,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    resp["Content-Disposition"] = (
+        f'attachment; filename="multi_analytics_{len(session_ids)}_sessions.xlsx"'
+    )
+    return resp
+
+
+# ── Private helpers ───────────────────────────────────────────────────────────
+
+def _safe_float(val) -> float | None:
+    try:
+        return float(val) if val not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+
 
 def _score_distribution(session_id: str) -> list[dict]:
-    """
-    Build 10-point histogram buckets for the score bar chart.
-    Single query using annotation + Python grouping.
-    """
     from apps.testing.models import StudentAttempt, AttemptStatus
 
     scores = list(
@@ -164,39 +266,35 @@ def _score_distribution(session_id: str) -> list[dict]:
 
 
 def _build_excel(kpis: dict, ranking: list, breakdown: list) -> bytes:
-    """Generate .xlsx with three sheets: KPI Summary, Ranking, Question Breakdown."""
     import io
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment
 
-    wb = openpyxl.Workbook()
-
-    # ── Sheet 1: KPI Summary ──────────────────────────────────────────────────
+    wb  = openpyxl.Workbook()
     ws1 = wb.active
     ws1.title = "KPI Summary"
+
     _hdr(ws1, ["Метрика", "Значение"])
-    kpi_rows = [
-        ("Тест", kpis["test_title"]),
-        ("Сессия", kpis["session_title"]),
-        ("Тип сессии", kpis["session_type_display"]),
-        ("Всего вопросов", kpis["total_questions"]),
-        ("Всего попыток", kpis["total_count"]),
-        ("Активных попыток", kpis["active_count"]),
-        ("Завершённых попыток", kpis["finished_count"]),
-        ("Просроченных попыток", kpis["expired_count"]),
-        ("Средний балл", kpis["avg_score"]),
-        ("Максимальный балл", kpis["max_score"]),
-        ("Минимальный балл", kpis["min_score"]),
-        ("Прошли (≥75%)", kpis["passed_count"]),
-        ("Не прошли (<75%)", kpis["failed_count"]),
-        ("Процент прохождения", f"{kpis['completion_rate']}%"),
-        ("Среднее время", kpis.get("avg_duration_fmt", "—")),
-    ]
-    for row in kpi_rows:
+    for row in [
+        ("Тест",                   kpis["test_title"]),
+        ("Сессия",                 kpis["session_title"]),
+        ("Тип сессии",             kpis["session_type_display"]),
+        ("Всего вопросов",         kpis["total_questions"]),
+        ("Всего попыток",          kpis["total_count"]),
+        ("Активных попыток",       kpis["active_count"]),
+        ("Завершённых попыток",    kpis["finished_count"]),
+        ("Просроченных попыток",   kpis["expired_count"]),
+        ("Средний балл",           kpis["avg_score"]),
+        ("Максимальный балл",      kpis["max_score"]),
+        ("Минимальный балл",       kpis["min_score"]),
+        ("Прошли (≥75%)",          kpis["passed_count"]),
+        ("Не прошли (<75%)",       kpis["failed_count"]),
+        ("Процент прохождения",    f"{kpis['completion_rate']}%"),
+        ("Среднее время",          kpis.get("avg_duration_fmt", "—")),
+    ]:
         ws1.append(row)
     _autowidth(ws1)
 
-    # ── Sheet 2: Ranking ──────────────────────────────────────────────────────
     ws2 = wb.create_sheet("Рейтинг")
     _hdr(ws2, ["Место", "Студент", "Балл", "Время", "Начато", "Завершено"])
     for row in ranking:
@@ -210,7 +308,6 @@ def _build_excel(kpis: dict, ranking: list, breakdown: list) -> bytes:
         ])
     _autowidth(ws2)
 
-    # ── Sheet 3: Question breakdown ───────────────────────────────────────────
     ws3 = wb.create_sheet("Вопросы")
     _hdr(ws3, ["Вопрос", "Тип", "Сложность", "Всего", "Верно", "Неверно", "% верных"])
     for b in breakdown:
@@ -231,16 +328,16 @@ def _build_excel(kpis: dict, ranking: list, breakdown: list) -> bytes:
     return buf.read()
 
 
-def _hdr(ws, cols: list[str]) -> None:
+def _hdr(ws, cols):
     from openpyxl.styles import Font, PatternFill, Alignment
     ws.append(cols)
     for cell in ws[1]:
-        cell.fill = PatternFill("solid", fgColor="1F4E79")
-        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill      = PatternFill("solid", fgColor="1F4E79")
+        cell.font      = Font(bold=True, color="FFFFFF")
         cell.alignment = Alignment(horizontal="center")
 
 
-def _autowidth(ws) -> None:
+def _autowidth(ws):
     for col in ws.columns:
         max_len = max((len(str(c.value or "")) for c in col), default=8)
         ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 55)

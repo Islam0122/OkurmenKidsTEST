@@ -1,0 +1,394 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+<style>
+    .analytics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .analytics-card {
+        background: var(--body-bg);
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: 0 2px 10px rgba(0,0,0,.06);
+        border: 1px solid var(--hairline-color);
+    }
+
+    .analytics-card h3 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        opacity: .7;
+    }
+
+    .analytics-card .value {
+        font-size: 30px;
+        font-weight: 700;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+        margin-top: 20px;
+    }
+
+    .analytics-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .analytics-table th,
+    .analytics-table td {
+        padding: 12px;
+        border-bottom: 1px solid var(--hairline-color);
+        text-align: left;
+    }
+
+    .analytics-table th {
+        background: rgba(0,0,0,.03);
+        font-weight: 600;
+    }
+
+    .filters-box {
+        background: var(--body-bg);
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 24px;
+        border: 1px solid var(--hairline-color);
+    }
+
+    .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+    }
+
+    .filters-grid input,
+    .filters-grid select {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid var(--hairline-color);
+    }
+
+    .chart-box {
+        background: var(--body-bg);
+        border-radius: 14px;
+        padding: 20px;
+        margin-top: 24px;
+        border: 1px solid var(--hairline-color);
+    }
+
+    .top-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .export-btn {
+        padding: 10px 18px;
+        border-radius: 10px;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .badge {
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-success {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .badge-danger {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="top-section">
+    <div>
+        <h1>{{ title }}</h1>
+        <p>
+            Выбрано сессий:
+            <strong>{{ data.selected_sessions_count }}</strong>
+        </p>
+    </div>
+
+    <a class="button export-btn"
+       href="{% url 'admin:analytics_multi_export' %}?sessions={{ session_ids_csv }}" >
+        Export Excel
+    </a>
+</div>
+
+{% if no_sessions %}
+    <div class="messagelist">
+        <div class="warning">
+            Не выбрано ни одной сессии.
+        </div>
+    </div>
+{% else %}
+
+<form method="get" class="filters-box">
+
+    <input type="hidden" name="sessions" value="{{ session_ids_csv }}">
+
+    <div class="filters-grid">
+
+        <div>
+            <label>Дата от</label>
+            <input type="date" name="date_from" value="{{ filters.date_from|default:'' }}">
+        </div>
+
+        <div>
+            <label>Дата до</label>
+            <input type="date" name="date_to" value="{{ filters.date_to|default:'' }}">
+        </div>
+
+        <div>
+            <label>Мин балл</label>
+            <input type="number" step="0.1" name="min_score"
+                   value="{{ filters.min_score|default:'' }}">
+        </div>
+
+        <div>
+            <label>Макс балл</label>
+            <input type="number" step="0.1" name="max_score"
+                   value="{{ filters.max_score|default:'' }}">
+        </div>
+
+        <div>
+            <label>Режим</label>
+            <select name="dedup">
+                <option value="best"
+                    {% if filters.dedup_mode == 'best' %}selected{% endif %}>
+                    Лучший результат
+                </option>
+
+                <option value="all"
+                    {% if filters.dedup_mode == 'all' %}selected{% endif %}>
+                    Все попытки
+                </option>
+            </select>
+        </div>
+
+    </div>
+
+    <div style="margin-top:16px;">
+        <button type="submit" class="button default">
+            Применить фильтры
+        </button>
+    </div>
+
+</form>
+
+
+<!-- KPI -->
+
+<div class="analytics-grid">
+
+    <div class="analytics-card">
+        <h3>Уникальных студентов</h3>
+        <div class="value">{{ data.kpis.unique_students }}</div>
+    </div>
+
+    <div class="analytics-card">
+        <h3>Всего попыток</h3>
+        <div class="value">{{ data.kpis.total_attempts }}</div>
+    </div>
+
+    <div class="analytics-card">
+        <h3>Средний балл</h3>
+        <div class="value">{{ data.kpis.avg_score }}</div>
+    </div>
+
+    <div class="analytics-card">
+        <h3>Максимальный балл</h3>
+        <div class="value">{{ data.kpis.max_score }}</div>
+    </div>
+
+    <div class="analytics-card">
+        <h3>Минимальный балл</h3>
+        <div class="value">{{ data.kpis.min_score }}</div>
+    </div>
+
+    <div class="analytics-card">
+        <h3>Процент прохождения</h3>
+        <div class="value">{{ data.kpis.pass_rate }}%</div>
+    </div>
+
+    <div class="analytics-card">
+        <h3>Среднее время</h3>
+        <div class="value">{{ data.kpis.avg_duration_fmt }}</div>
+    </div>
+
+    <div class="analytics-card">
+        <h3>Завершённых</h3>
+        <div class="value">{{ data.kpis.finished_attempts }}</div>
+    </div>
+
+</div>
+
+
+<!-- Ranking -->
+
+<div class="table-wrapper">
+
+    <table class="analytics-table">
+
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Студент</th>
+                <th>Сессия</th>
+                <th>Тест</th>
+                <th>Балл</th>
+                <th>Время</th>
+                <th>Статус</th>
+                <th>Завершено</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+        {% for row in data.ranking %}
+
+            <tr>
+
+                <td>{{ row.rank }}</td>
+
+                <td>
+                    <strong>{{ row.student_name }}</strong>
+                </td>
+
+                <td>{{ row.session_title }}</td>
+
+                <td>{{ row.test_title }}</td>
+
+                <td>
+                    <strong>{{ row.score }}</strong>
+                </td>
+
+                <td>{{ row.duration_fmt }}</td>
+
+                <td>
+                    {% if row.score >= 75 %}
+                        <span class="badge badge-success">
+                            PASS
+                        </span>
+                    {% else %}
+                        <span class="badge badge-danger">
+                            FAIL
+                        </span>
+                    {% endif %}
+                </td>
+
+                <td>{{ row.finished_at }}</td>
+
+            </tr>
+
+        {% empty %}
+
+            <tr>
+                <td colspan="8">
+                    Нет данных.
+                </td>
+            </tr>
+
+        {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+
+<!-- Charts -->
+
+<div class="chart-box">
+    <h2>Распределение баллов</h2>
+    <canvas id="scoreChart" height="120"></canvas>
+</div>
+
+<div class="chart-box">
+    <h2>Попытки по дням</h2>
+    <canvas id="attemptsChart" height="120"></canvas>
+</div>
+
+{% endif %}
+
+{% endblock %}
+
+
+{% block extrahead %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+
+{% block footer %}
+
+{{ block.super }}
+
+<script>
+
+const scoreBuckets = {{ score_buckets_json|safe }};
+const attemptsByDay = {{ attempts_by_day_json|safe }};
+
+const scoreCtx = document.getElementById('scoreChart');
+
+if (scoreCtx && scoreBuckets.length > 0) {
+
+    new Chart(scoreCtx, {
+        type: 'bar',
+        data: {
+            labels: scoreBuckets.map(i => i.range),
+            datasets: [{
+                label: 'Количество',
+                data: scoreBuckets.map(i => i.count)
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+}
+
+const attemptsCtx = document.getElementById('attemptsChart');
+
+if (attemptsCtx && attemptsByDay.length > 0) {
+
+    new Chart(attemptsCtx, {
+        type: 'line',
+        data: {
+            labels: attemptsByDay.map(i => i.day),
+            datasets: [{
+                label: 'Попытки',
+                data: attemptsByDay.map(i => i.count)
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+}
+
+</script>
+
+{% endblock %}

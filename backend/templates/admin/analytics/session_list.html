@@ -6,7 +6,6 @@
 {% block extrahead %}
 {{ block.super }}
 <style>
-/* ── CSS variables (consistent with KPI dashboard) ──────────────────────── */
 :root {
   --an-navy:   #1f4e79;
   --an-blue:   #2563eb;
@@ -23,165 +22,117 @@
 }
 
 /* ── Page header ─────────────────────────────────────────────────────────── */
-.an-header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 24px;
-}
+.an-header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
 .an-header-icon {
-  width: 50px; height: 50px;
-  border-radius: 13px;
+  width: 50px; height: 50px; border-radius: 13px;
   background: linear-gradient(135deg, var(--an-blue), var(--an-navy));
   display: flex; align-items: center; justify-content: center;
   color: #fff; font-size: 21px; flex-shrink: 0;
 }
-.an-header h1 {
-  margin: 0; font-size: 22px;
-  font-weight: 800; color: var(--an-navy);
-}
-.an-header p {
-  margin: 4px 0 0; font-size: 13px; color: var(--an-gray);
-}
+.an-header h1 { margin: 0; font-size: 22px; font-weight: 800; color: var(--an-navy); }
+.an-header p  { margin: 4px 0 0; font-size: 13px; color: var(--an-gray); }
 
 /* ── Search bar ──────────────────────────────────────────────────────────── */
 .an-search-form {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  align-items: center;
+  display: flex; gap: 10px; margin-bottom: 14px; align-items: center;
 }
 .an-search-input {
-  flex: 1; max-width: 380px;
-  padding: 9px 14px;
-  border: 1.5px solid var(--an-border);
-  border-radius: 8px;
-  font-size: 13px;
-  color: var(--an-navy);
-  background: var(--an-white);
+  flex: 1; max-width: 380px; padding: 9px 14px;
+  border: 1.5px solid var(--an-border); border-radius: 8px;
+  font-size: 13px; color: var(--an-navy); background: var(--an-white);
   transition: border-color .15s;
 }
 .an-search-input:focus { outline: none; border-color: var(--an-blue); }
 .an-search-btn {
-  padding: 9px 20px;
-  background: var(--an-blue);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex; align-items: center; gap: 6px;
-  transition: filter .15s;
+  padding: 9px 20px; background: var(--an-blue); color: #fff;
+  border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; gap: 6px; transition: filter .15s;
 }
 .an-search-btn:hover { filter: brightness(1.1); }
 .an-search-clear {
-  padding: 9px 16px;
-  background: var(--an-gray);
-  color: #fff; border: none;
+  padding: 9px 16px; background: var(--an-gray); color: #fff; border: none;
   border-radius: 8px; font-size: 13px; font-weight: 600;
-  text-decoration: none;
-  display: flex; align-items: center; gap: 5px;
-  transition: filter .15s;
+  text-decoration: none; display: flex; align-items: center; gap: 5px; transition: filter .15s;
 }
 .an-search-clear:hover { filter: brightness(1.1); color: #fff; }
 
-/* ── Table wrapper ───────────────────────────────────────────────────────── */
-.an-table-wrap {
+/* ── Multi-select toolbar ────────────────────────────────────────────────── */
+.an-bulk-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   background: var(--an-white);
-  border: 1px solid var(--an-border);
+  border: 1.5px solid var(--an-blue);
   border-radius: var(--radius);
-  overflow: hidden;
+  padding: 10px 18px; margin-bottom: 14px;
   box-shadow: var(--shadow);
 }
+.an-bulk-count {
+  font-size: 13px; font-weight: 700; color: var(--an-navy); margin-right: auto;
+  display: flex; align-items: center; gap: 6px;
+}
+.an-bulk-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 18px; border-radius: 8px;
+  font-size: 13px; font-weight: 600; color: #fff;
+  text-decoration: none; border: none; cursor: pointer;
+  transition: filter .15s;
+}
+.an-bulk-btn:hover { filter: brightness(1.1); color: #fff; }
+.an-bulk-btn-analyze { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
+.an-bulk-btn-clear   { background: var(--an-gray); }
 
-.an-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
+/* ── Table ───────────────────────────────────────────────────────────────── */
+.an-table-wrap {
+  background: var(--an-white); border: 1px solid var(--an-border);
+  border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
 }
+.an-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .an-table thead th {
-  background: var(--an-navy);
-  color: #fff;
-  padding: 11px 14px;
-  text-align: left;
-  font-size: 11px; font-weight: 700;
-  letter-spacing: .05em; text-transform: uppercase;
-  white-space: nowrap;
+  background: var(--an-navy); color: #fff;
+  padding: 11px 14px; text-align: left;
+  font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;
 }
+.an-table thead th.cb-col { width: 40px; text-align: center; }
 .an-table tbody td {
-  padding: 11px 14px;
-  border-bottom: 1px solid var(--an-border);
-  vertical-align: middle;
+  padding: 11px 14px; border-bottom: 1px solid var(--an-border); vertical-align: middle;
 }
 .an-table tbody tr:last-child td { border-bottom: none; }
 .an-table tbody tr:hover td { background: var(--an-bg); }
+.an-table tbody tr.selected td { background: #eff6ff; }
 
-/* ── Badges ──────────────────────────────────────────────────────────────── */
-.badge {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-size: 11px; font-weight: 700;
+/* Checkbox */
+.an-cb {
+  width: 16px; height: 16px; cursor: pointer; accent-color: var(--an-blue);
 }
-.b-exam      { background: #fee2e2; color: #991b1b; }
-.b-training  { background: #ede9fe; color: #5b21b6; }
-.b-active    { background: #d1fae5; color: #065f46; }
-.b-inactive  { background: #f1f5f9; color: #475569; }
+.an-select-all { cursor: pointer; accent-color: var(--an-blue); width: 16px; height: 16px; }
 
-/* ── Action button ───────────────────────────────────────────────────────── */
+/* Badges */
+.badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+.b-exam     { background: #fee2e2; color: #991b1b; }
+.b-training { background: #ede9fe; color: #5b21b6; }
+.b-active   { background: #d1fae5; color: #065f46; }
+.b-inactive { background: #f1f5f9; color: #475569; }
+
 .an-btn {
   display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 14px;
-  border-radius: 7px;
-  font-size: 12px; font-weight: 600;
-  text-decoration: none;
-  color: #fff;
+  padding: 6px 14px; border-radius: 7px;
+  font-size: 12px; font-weight: 600; text-decoration: none; color: #fff;
   transition: filter .15s, transform .12s;
 }
 .an-btn:hover { filter: brightness(1.1); transform: translateY(-1px); color: #fff; }
-.an-btn-detail  { background: linear-gradient(135deg, #3b82f6, #2563eb,color:white); }
-.an-btn-disabled {
-  background: #e2e8f0; color: #94a3b8 !important;
-  cursor: not-allowed; pointer-events: none;
-}
+.an-btn-detail   { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.an-btn-disabled { background: #e2e8f0; color: #94a3b8 !important; cursor: not-allowed; pointer-events: none; }
 
-/* ── Progress bar inline ─────────────────────────────────────────────────── */
-.mini-bar {
-  display: inline-block;
-  width: 60px; height: 5px;
-  background: #f1f5f9;
-  border-radius: 3px;
-  overflow: hidden;
-  vertical-align: middle;
-  margin-left: 6px;
-}
-.mini-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--an-blue), var(--an-green));
-  border-radius: 3px;
-}
+.mini-bar { display: inline-block; width: 60px; height: 5px; background: #f1f5f9; border-radius: 3px; overflow: hidden; vertical-align: middle; margin-left: 6px; }
+.mini-bar-fill { height: 100%; background: linear-gradient(90deg, var(--an-blue), var(--an-green)); border-radius: 3px; }
 
-/* ── Empty state ─────────────────────────────────────────────────────────── */
-.an-empty {
-  text-align: center;
-  padding: 60px 24px;
-  color: var(--an-gray);
-}
+.an-empty { text-align: center; padding: 60px 24px; color: var(--an-gray); }
 .an-empty i { font-size: 48px; opacity: .25; margin-bottom: 12px; display: block; }
 
-/* ── Stats banner ────────────────────────────────────────────────────────── */
-.an-stats-banner {
-  display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px;
-}
+.an-stats-banner { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
 .an-stat-pill {
-  background: var(--an-white);
-  border: 1px solid var(--an-border);
-  border-radius: 10px;
-  padding: 10px 18px;
-  display: flex; align-items: center; gap: 8px;
-  box-shadow: var(--shadow);
-  font-size: 13px; font-weight: 600; color: var(--an-navy);
+  background: var(--an-white); border: 1px solid var(--an-border); border-radius: 10px;
+  padding: 10px 18px; display: flex; align-items: center; gap: 8px;
+  box-shadow: var(--shadow); font-size: 13px; font-weight: 600; color: var(--an-navy);
 }
 .an-stat-pill i { font-size: 16px; }
 </style>
@@ -190,46 +141,59 @@
 {% block content %}
 <div>
 
-{# ── Header ─────────────────────────────────────────────────────────────── #}
 <div class="an-header">
-  <div class="an-header-icon">
-    <i class="fas fa-chart-bar"></i>
-  </div>
+  <div class="an-header-icon"><i class="fas fa-chart-bar"></i></div>
   <div>
     <h1>Аналитика сессий</h1>
-    <p>Выберите сессию, чтобы просмотреть KPI и рейтинг студентов</p>
+    <p>Выберите одну или несколько сессий для просмотра аналитики</p>
   </div>
 </div>
 
-{# ── Stats banner ────────────────────────────────────────────────────────── #}
 <div class="an-stats-banner">
   <div class="an-stat-pill">
     <i class="fas fa-layer-group" style="color:var(--an-blue);"></i>
     Сессий: <strong>{{ sessions|length }}</strong>
   </div>
+  <div class="an-stat-pill" id="selected-pill" style="display:none; border-color:var(--an-blue);">
+    <i class="fas fa-check-square" style="color:var(--an-blue);"></i>
+    Выбрано: <strong id="selected-count">0</strong>
+  </div>
 </div>
 
 {# ── Search ──────────────────────────────────────────────────────────────── #}
-<form method="get" class="an-search-form">
+<form method="get" class="an-search-form" id="search-form">
   <input type="text" name="q" class="an-search-input"
-         placeholder="Поиск по названию, тесту или ключу сессии…"
+         placeholder="Поиск по названию, тесту или ключу…"
          value="{{ search_query }}">
-  <button type="submit" class="an-search-btn">
-    <i class="fas fa-search"></i> Найти
-  </button>
+  <button type="submit" class="an-search-btn"><i class="fas fa-search"></i> Найти</button>
   {% if search_query %}
-  <a href="?" class="an-search-clear">
-    <i class="fas fa-times"></i> Сбросить
-  </a>
+  <a href="?" class="an-search-clear"><i class="fas fa-times"></i> Сбросить</a>
   {% endif %}
 </form>
+
+{# ── Bulk action bar (shown when selections made) ─────────────────────────── #}
+<div class="an-bulk-bar" id="bulk-bar" style="display:none;">
+  <div class="an-bulk-count">
+    <i class="fas fa-check-square" style="color:var(--an-blue);"></i>
+    <span id="bulk-count-label">0 сессий выбрано</span>
+  </div>
+  <button class="an-bulk-btn an-bulk-btn-analyze" id="btn-analyze" type="button">
+    <i class="fas fa-chart-pie"></i> Мультисессионная аналитика
+  </button>
+  <button class="an-bulk-btn an-bulk-btn-clear" id="btn-clear-sel" type="button">
+    <i class="fas fa-times"></i> Снять выбор
+  </button>
+</div>
 
 {# ── Table ───────────────────────────────────────────────────────────────── #}
 <div class="an-table-wrap">
   {% if sessions %}
-  <table class="an-table">
+  <table class="an-table" id="sessions-table">
     <thead>
       <tr>
+        <th class="cb-col">
+          <input type="checkbox" class="an-select-all" id="select-all" title="Выбрать все">
+        </th>
         <th>#</th>
         <th>Сессия / Ключ</th>
         <th>Тест</th>
@@ -244,8 +208,11 @@
     </thead>
     <tbody>
       {% for s in sessions %}
-      {% with finish_pct=s.finished_attempts|default:0 total=s.total_attempts|default:1 %}
-      <tr>
+      <tr data-id="{{ s.id }}">
+        <td style="text-align:center;">
+          <input type="checkbox" class="an-cb session-cb" value="{{ s.id }}"
+                 title="Выбрать сессию">
+        </td>
         <td style="color:var(--an-gray); text-align:center;">{{ forloop.counter }}</td>
 
         <td>
@@ -293,24 +260,18 @@
           {% endif %}
         </td>
 
-        <td style="color:var(--an-gray); font-size:12px;">
-          {{ s.created_at|date:"d.m.Y H:i" }}
-        </td>
+        <td style="color:var(--an-gray); font-size:12px;">{{ s.created_at|date:"d.m.Y H:i" }}</td>
 
         <td>
           {% if s.finished_attempts > 0 %}
-            <a href="{% url 'admin:analytics_session_detail' s.id %}"
-               class="an-btn an-btn-detail">
+            <a href="{% url 'admin:analytics_session_detail' s.id %}" class="an-btn an-btn-detail">
               <i class="fas fa-chart-pie"></i> Аналитика
             </a>
           {% else %}
-            <span class="an-btn an-btn-disabled">
-              <i class="fas fa-ban"></i> Нет данных
-            </span>
+            <span class="an-btn an-btn-disabled"><i class="fas fa-ban"></i> Нет данных</span>
           {% endif %}
         </td>
       </tr>
-      {% endwith %}
       {% endfor %}
     </tbody>
   </table>
@@ -323,4 +284,65 @@
 </div>
 
 </div>
+
+<script>
+(function () {
+  const checkboxes  = document.querySelectorAll(".session-cb");
+  const selectAll   = document.getElementById("select-all");
+  const bulkBar     = document.getElementById("bulk-bar");
+  const countLabel  = document.getElementById("bulk-count-label");
+  const btnAnalyze  = document.getElementById("btn-analyze");
+  const btnClear    = document.getElementById("btn-clear-sel");
+  const selPill     = document.getElementById("selected-pill");
+  const selCount    = document.getElementById("selected-count");
+
+  function getChecked() {
+    return Array.from(checkboxes).filter(cb => cb.checked);
+  }
+
+  function update() {
+    const checked = getChecked();
+    const n       = checked.length;
+    const show    = n > 0;
+
+    bulkBar.style.display   = show ? "flex"  : "none";
+    selPill.style.display   = show ? "flex"  : "none";
+    countLabel.textContent  = `${n} ${n === 1 ? "сессия выбрана" : n < 5 ? "сессии выбрано" : "сессий выбрано"}`;
+    selCount.textContent    = n;
+
+    // Highlight rows
+    document.querySelectorAll("#sessions-table tbody tr").forEach(tr => {
+      const cb = tr.querySelector(".session-cb");
+      tr.classList.toggle("selected", cb && cb.checked);
+    });
+  }
+
+  checkboxes.forEach(cb => cb.addEventListener("change", () => {
+    const allChecked = Array.from(checkboxes).every(c => c.checked);
+    const someChecked = Array.from(checkboxes).some(c => c.checked);
+    selectAll.checked       = allChecked;
+    selectAll.indeterminate = !allChecked && someChecked;
+    update();
+  }));
+
+  selectAll.addEventListener("change", function () {
+    checkboxes.forEach(cb => { cb.checked = this.checked; });
+    update();
+  });
+
+  btnClear.addEventListener("click", () => {
+    checkboxes.forEach(cb => { cb.checked = false; });
+    selectAll.checked       = false;
+    selectAll.indeterminate = false;
+    update();
+  });
+
+  btnAnalyze.addEventListener("click", () => {
+    const ids = getChecked().map(cb => cb.value).join(",");
+    if (ids) {
+      window.location.href = "{% url 'admin:analytics_multi' %}?sessions=" + ids;
+    }
+  });
+})();
+</script>
 {% endblock %}
