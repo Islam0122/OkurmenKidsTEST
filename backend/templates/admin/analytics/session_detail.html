@@ -1,0 +1,584 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} — {{ block.super }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ── CSS variables ───────────────────────────────────────────────────────── */
+:root {
+  --an-navy:   #1f4e79;
+  --an-blue:   #2563eb;
+  --an-green:  #059669;
+  --an-red:    #dc2626;
+  --an-orange: #d97706;
+  --an-purple: #7c3aed;
+  --an-teal:   #0891b2;
+  --an-gray:   #64748b;
+  --an-border: #e2e8f0;
+  --an-bg:     #f8fafc;
+  --an-white:  #ffffff;
+  --radius:    13px;
+  --shadow:    0 2px 12px rgba(0,0,0,.07);
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+.an-toolbar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 12px;
+  background: var(--an-white);
+  border: 1px solid var(--an-border);
+  border-radius: var(--radius);
+  padding: 14px 20px; margin-bottom: 24px;
+  box-shadow: var(--shadow);
+}
+.an-toolbar-title {
+  font-size: 18px; font-weight: 800; color: var(--an-navy);
+  margin-right: auto;
+  display: flex; align-items: center; gap: 8px;
+}
+.an-back-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 16px;
+  background: var(--an-gray); color: #fff;
+  border-radius: 8px; font-size: 13px; font-weight: 600;
+  text-decoration: none;
+  transition: filter .15s;
+}
+.an-back-btn:hover { filter: brightness(1.15); color: #fff; }
+
+.an-export-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 18px;
+  background: linear-gradient(135deg, #10b981, #059669); color: #fff;
+  border-radius: 8px; font-size: 13px; font-weight: 600;
+  text-decoration: none;
+  transition: filter .15s;
+}
+.an-export-btn:hover { filter: brightness(1.1); color: #fff; }
+
+/* ── Section title ───────────────────────────────────────────────────────── */
+.an-section {
+  font-size: 15px; font-weight: 700; color: var(--an-navy);
+  margin: 28px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--an-border);
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* ── Meta info row ───────────────────────────────────────────────────────── */
+.an-meta {
+  display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 22px;
+}
+.an-meta-item {
+  background: var(--an-white);
+  border: 1px solid var(--an-border);
+  border-radius: 9px;
+  padding: 8px 16px;
+  font-size: 13px; color: var(--an-gray);
+  box-shadow: var(--shadow);
+  display: flex; align-items: center; gap: 6px;
+}
+.an-meta-item strong { color: var(--an-navy); }
+
+/* ── KPI Cards grid ──────────────────────────────────────────────────────── */
+.an-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 8px;
+}
+.an-card {
+  background: var(--an-white);
+  border: 1px solid var(--an-border);
+  border-radius: var(--radius);
+  padding: 18px 16px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+  transition: transform .15s, box-shadow .15s;
+}
+.an-card::before {
+  content: "";
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--card-accent, var(--an-blue));
+}
+.an-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.11); }
+.an-card-icon { font-size: 22px; margin-bottom: 5px; color: var(--card-accent, var(--an-blue)); }
+.an-card-num  {
+  font-size: 28px; font-weight: 800; line-height: 1;
+  color: var(--card-accent, var(--an-navy));
+}
+.an-card-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--an-gray); margin-top: 6px;
+}
+
+/* ── Progress bar (pass rate) ────────────────────────────────────────────── */
+.an-prog { height: 6px; background: #f1f5f9; border-radius: 4px; overflow: hidden; margin-top: 8px; }
+.an-prog-fill { height: 100%; background: linear-gradient(90deg, var(--an-blue), var(--an-green)); border-radius: 4px; }
+
+/* ── Charts row ──────────────────────────────────────────────────────────── */
+.an-charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 8px;
+}
+@media (max-width: 1000px) { .an-charts-row { grid-template-columns: 1fr; } }
+
+.an-chart-card {
+  background: var(--an-white);
+  border: 1px solid var(--an-border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+.an-chart-card h4 {
+  margin: 0 0 14px; font-size: 14px; font-weight: 700; color: var(--an-navy);
+  display: flex; align-items: center; gap: 6px;
+}
+.an-chart-card canvas { max-height: 260px; }
+
+/* ── Ranking table ───────────────────────────────────────────────────────── */
+.an-table-wrap {
+  background: var(--an-white);
+  border: 1px solid var(--an-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.an-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.an-table thead th {
+  background: var(--an-navy); color: #fff;
+  padding: 11px 14px; text-align: left;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;
+}
+.an-table tbody td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--an-border);
+  vertical-align: middle;
+}
+.an-table tbody tr:last-child td { border-bottom: none; }
+.an-table tbody tr:hover td { background: var(--an-bg); }
+
+/* Score badge */
+.sc-badge {
+  display: inline-block; padding: 3px 10px;
+  border-radius: 12px; font-size: 12px; font-weight: 700;
+}
+.sc-high   { background: #d1fae5; color: #065f46; }
+.sc-mid    { background: #fef3c7; color: #92400e; }
+.sc-low    { background: #fee2e2; color: #991b1b; }
+
+/* Rank medal */
+.rank-medal { font-size: 17px; display: inline-block; width: 28px; text-align: center; }
+
+/* Correctness rate bar */
+.cr-bar-wrap { display: flex; align-items: center; gap: 6px; }
+.cr-bar { flex: 1; height: 5px; background: #f1f5f9; border-radius: 3px; overflow: hidden; }
+.cr-bar-fill { height: 100%; border-radius: 3px; }
+.cr-high { background: #10b981; }
+.cr-mid  { background: #f59e0b; }
+.cr-low  { background: #ef4444; }
+
+/* Question type badge */
+.qt-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 9px;
+  font-size: 11px; font-weight: 600;
+}
+.qt-single   { background: #dbeafe; color: #1d4ed8; }
+.qt-multiple { background: #ede9fe; color: #5b21b6; }
+.qt-text     { background: #fef3c7; color: #92400e; }
+.qt-code     { background: #fee2e2; color: #991b1b; }
+
+.diff-easy   { background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 9px; font-size: 11px; font-weight: 600; }
+.diff-medium { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 9px; font-size: 11px; font-weight: 600; }
+.diff-hard   { background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 9px; font-size: 11px; font-weight: 600; }
+
+/* Empty state */
+.an-empty { text-align: center; padding: 48px 24px; color: var(--an-gray); }
+.an-empty i { font-size: 40px; opacity: .2; display: block; margin-bottom: 10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div>
+
+{# ── Toolbar ─────────────────────────────────────────────────────────────── #}
+<div class="an-toolbar">
+  <div class="an-toolbar-title">
+    <i class="fas fa-chart-pie" style="color:var(--an-blue);"></i>
+    {{ kpis.session_title|truncatechars:50 }}
+  </div>
+
+  <a href="{% url 'admin:analytics_session_list' %}" class="an-back-btn">
+    <i class="fas fa-arrow-left"></i> Все сессии
+  </a>
+
+  <a href="{% url 'admin:analytics_session_export' session_id %}" class="an-export-btn">
+    <i class="fas fa-file-excel"></i> Excel
+  </a>
+</div>
+
+{# ── Meta info ────────────────────────────────────────────────────────────── #}
+<div class="an-meta">
+  <div class="an-meta-item">
+    <i class="fas fa-book-open" style="color:var(--an-blue);"></i>
+    Тест: <strong>{{ kpis.test_title }}</strong>
+  </div>
+  <div class="an-meta-item">
+    <i class="fas fa-tag" style="color:var(--an-purple);"></i>
+    Тип: <strong>{{ kpis.session_type_display }}</strong>
+  </div>
+  <div class="an-meta-item">
+    <i class="fas fa-key" style="color:var(--an-orange);"></i>
+    Ключ: <strong style="font-family:monospace;">{{ kpis.session_key|slice:":18" }}</strong>
+  </div>
+  <div class="an-meta-item">
+    <i class="fas fa-question-circle" style="color:var(--an-teal);"></i>
+    Вопросов: <strong>{{ kpis.total_questions }}</strong>
+  </div>
+  <div class="an-meta-item">
+    <i class="fas fa-calendar-alt" style="color:var(--an-gray);"></i>
+    Создана: <strong>{{ kpis.created_at|date:"d.m.Y H:i" }}</strong>
+  </div>
+  <div class="an-meta-item">
+    <i class="fas fa-clock" style="color:{% if kpis.is_active %}var(--an-green){% else %}var(--an-red){% endif %};"></i>
+    Статус:
+    <strong style="color:{% if kpis.is_active %}var(--an-green){% else %}var(--an-red){% endif %};">
+      {% if kpis.is_active %}Активна{% else %}Завершена{% endif %}
+    </strong>
+  </div>
+</div>
+
+{# ── KPI cards ────────────────────────────────────────────────────────────── #}
+<div class="an-section">
+  <i class="fas fa-tachometer-alt" style="color:var(--an-blue);"></i>
+  KPI показатели
+</div>
+
+<div class="an-cards">
+
+  <div class="an-card" style="--card-accent:#2563eb;">
+    <div class="an-card-icon"><i class="fas fa-users"></i></div>
+    <div class="an-card-num">{{ kpis.total_count }}</div>
+    <div class="an-card-label">Всего попыток</div>
+  </div>
+
+  <div class="an-card" style="--card-accent:#059669;">
+    <div class="an-card-icon"><i class="fas fa-flag-checkered"></i></div>
+    <div class="an-card-num">{{ kpis.finished_count }}</div>
+    <div class="an-card-label">Завершено</div>
+  </div>
+
+  <div class="an-card" style="--card-accent:#d97706;">
+    <div class="an-card-icon"><i class="fas fa-spinner"></i></div>
+    <div class="an-card-num">{{ kpis.active_count }}</div>
+    <div class="an-card-label">Активных</div>
+  </div>
+
+  <div class="an-card" style="--card-accent:#dc2626;">
+    <div class="an-card-icon"><i class="fas fa-hourglass-end"></i></div>
+    <div class="an-card-num">{{ kpis.expired_count }}</div>
+    <div class="an-card-label">Просрочено</div>
+  </div>
+
+  <div class="an-card" style="--card-accent:#2563eb;">
+    <div class="an-card-icon"><i class="fas fa-star"></i></div>
+    <div class="an-card-num">{{ kpis.avg_score }}</div>
+    <div class="an-card-label">Средний балл</div>
+    <div class="an-prog">
+      <div class="an-prog-fill" style="width:{{ kpis.avg_score }}%;"></div>
+    </div>
+  </div>
+
+  <div class="an-card" style="--card-accent:#059669;">
+    <div class="an-card-icon"><i class="fas fa-trophy"></i></div>
+    <div class="an-card-num">{{ kpis.max_score }}</div>
+    <div class="an-card-label">Максимум</div>
+    <div class="an-prog">
+      <div class="an-prog-fill" style="width:{{ kpis.max_score }}%;"></div>
+    </div>
+  </div>
+
+  <div class="an-card" style="--card-accent:#dc2626;">
+    <div class="an-card-icon"><i class="fas fa-arrow-down"></i></div>
+    <div class="an-card-num">{{ kpis.min_score }}</div>
+    <div class="an-card-label">Минимум</div>
+    <div class="an-prog">
+      <div class="an-prog-fill" style="width:{{ kpis.min_score }}%;"></div>
+    </div>
+  </div>
+
+  <div class="an-card" style="--card-accent:#059669;">
+    <div class="an-card-icon"><i class="fas fa-check-circle"></i></div>
+    <div class="an-card-num">{{ kpis.passed_count }}</div>
+    <div class="an-card-label">Прошли (≥{{ kpis.pass_threshold }}%)</div>
+  </div>
+
+  <div class="an-card" style="--card-accent:#dc2626;">
+    <div class="an-card-icon"><i class="fas fa-times-circle"></i></div>
+    <div class="an-card-num">{{ kpis.failed_count }}</div>
+    <div class="an-card-label">Не прошли</div>
+  </div>
+
+  <div class="an-card" style="--card-accent:#7c3aed;">
+    <div class="an-card-icon"><i class="fas fa-percentage"></i></div>
+    <div class="an-card-num">{{ kpis.completion_rate }}%</div>
+    <div class="an-card-label">% прохождения</div>
+    <div class="an-prog">
+      <div class="an-prog-fill" style="width:{{ kpis.completion_rate }}%;"></div>
+    </div>
+  </div>
+
+  <div class="an-card" style="--card-accent:#0891b2;">
+    <div class="an-card-icon"><i class="fas fa-stopwatch"></i></div>
+    <div class="an-card-num" style="font-size:18px;">{{ kpis.avg_duration_fmt }}</div>
+    <div class="an-card-label">Среднее время</div>
+  </div>
+
+</div>
+
+{# ── Charts ───────────────────────────────────────────────────────────────── #}
+<div class="an-section">
+  <i class="fas fa-chart-bar" style="color:var(--an-teal);"></i>
+  Графики
+</div>
+
+<div class="an-charts-row">
+  <div class="an-chart-card">
+    <h4>
+      <i class="fas fa-chart-bar" style="color:var(--an-blue);"></i>
+      Распределение баллов
+    </h4>
+    <canvas id="chartScoreDist"></canvas>
+  </div>
+
+  <div class="an-chart-card">
+    <h4>
+      <i class="fas fa-chart-pie" style="color:var(--an-green);"></i>
+      Прошли vs Не прошли
+    </h4>
+    <canvas id="chartPassFail"></canvas>
+  </div>
+</div>
+
+{# ── Ranking table ────────────────────────────────────────────────────────── #}
+<div class="an-section">
+  <i class="fas fa-medal" style="color:var(--an-orange);"></i>
+  Рейтинг студентов
+  <span style="margin-left:auto; font-size:12px; font-weight:400; color:var(--an-gray);">
+    Сортировка: балл ↓ · время ↑
+  </span>
+</div>
+
+<div class="an-table-wrap">
+  {% if ranking %}
+  <table class="an-table">
+    <thead>
+      <tr>
+        <th style="width:60px; text-align:center;">Место</th>
+        <th>Студент</th>
+        <th style="text-align:center;">Балл</th>
+        <th style="text-align:center;">Время</th>
+        <th>Начало</th>
+        <th>Конец</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in ranking %}
+      <tr>
+        <td style="text-align:center;">
+          <span class="rank-medal">
+            {% if row.rank == 1 %}🥇
+            {% elif row.rank == 2 %}🥈
+            {% elif row.rank == 3 %}🥉
+            {% else %}{{ row.rank }}{% endif %}
+          </span>
+        </td>
+
+        <td>
+          <strong>{{ row.student_name }}</strong>
+        </td>
+
+        <td style="text-align:center;">
+          <span class="sc-badge {% if row.score >= 75 %}sc-high{% elif row.score >= 50 %}sc-mid{% else %}sc-low{% endif %}">
+            {{ row.score }}%
+          </span>
+        </td>
+
+        <td style="text-align:center; color:var(--an-gray); font-size:13px;">
+          {{ row.duration_fmt }}
+        </td>
+
+        <td style="font-size:12px; color:var(--an-gray);">
+          {{ row.started_at|date:"d.m.Y H:i" }}
+        </td>
+
+        <td style="font-size:12px; color:var(--an-gray);">
+          {% if row.finished_at %}{{ row.finished_at|date:"d.m.Y H:i" }}{% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="an-empty">
+    <i class="fas fa-inbox"></i>
+    <p>Нет завершённых попыток</p>
+  </div>
+  {% endif %}
+</div>
+
+{# ── Question breakdown ───────────────────────────────────────────────────── #}
+{% if breakdown %}
+<div class="an-section">
+  <i class="fas fa-list-check" style="color:var(--an-purple);"></i>
+  Разбивка по вопросам
+</div>
+
+<div class="an-table-wrap">
+  <table class="an-table">
+    <thead>
+      <tr>
+        <th>Вопрос</th>
+        <th>Тип</th>
+        <th>Сложность</th>
+        <th style="text-align:center;">Ответов</th>
+        <th style="text-align:center;">Верно</th>
+        <th style="text-align:center;">Неверно</th>
+        <th style="text-align:center;">Ожидает</th>
+        <th style="width:140px;">% верных</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in breakdown %}
+      <tr>
+        <td style="max-width:280px; font-size:13px;">
+          {{ b.question_text }}{% if b.question_text|length >= 80 %}…{% endif %}
+        </td>
+
+        <td>
+          {% if b.question_type == "single_choice" %}
+            <span class="qt-badge qt-single">Один</span>
+          {% elif b.question_type == "multiple_choice" %}
+            <span class="qt-badge qt-multiple">Несколько</span>
+          {% elif b.question_type == "text" %}
+            <span class="qt-badge qt-text">Текст</span>
+          {% else %}
+            <span class="qt-badge qt-code">Код</span>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if b.difficulty == "easy" %}
+            <span class="diff-easy">Лёгкий</span>
+          {% elif b.difficulty == "medium" %}
+            <span class="diff-medium">Средний</span>
+          {% else %}
+            <span class="diff-hard">Сложный</span>
+          {% endif %}
+        </td>
+
+        <td style="text-align:center; font-weight:700;">{{ b.total_answers }}</td>
+        <td style="text-align:center; color:var(--an-green); font-weight:700;">{{ b.correct_answers }}</td>
+        <td style="text-align:center; color:var(--an-red); font-weight:700;">{{ b.incorrect_answers }}</td>
+        <td style="text-align:center; color:var(--an-gray);">{{ b.pending_answers }}</td>
+
+        <td>
+          <div class="cr-bar-wrap">
+            <div class="cr-bar">
+              <div class="cr-bar-fill {% if b.correct_rate >= 70 %}cr-high{% elif b.correct_rate >= 40 %}cr-mid{% else %}cr-low{% endif %}"
+                   style="width:{{ b.correct_rate }}%;"></div>
+            </div>
+            <span style="font-size:12px; font-weight:700; color:{% if b.correct_rate >= 70 %}var(--an-green){% elif b.correct_rate >= 40 %}var(--an-orange){% else %}var(--an-red){% endif %};">
+              {{ b.correct_rate }}%
+            </span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div style="height:40px;"></div>
+
+</div>{# /page #}
+
+{# ── Chart.js ─────────────────────────────────────────────────────────────── #}
+<script>
+(function () {
+  /* Score distribution bar chart */
+  const buckets = {{ score_buckets_json|safe }};
+  const sdCtx = document.getElementById("chartScoreDist");
+  if (sdCtx && buckets.length) {
+    new Chart(sdCtx, {
+      type: "bar",
+      data: {
+        labels: buckets.map(b => b.range),
+        datasets: [{
+          label: "Студентов",
+          data: buckets.map(b => b.count),
+          backgroundColor: [
+            "#fee2e2","#fef3c7","#fef3c7","#fef3c7","#fef3c7",
+            "#fef3c7","#d1fae5","#d1fae5","#d1fae5","#d1fae5",
+          ],
+          borderColor: [
+            "#dc2626","#d97706","#d97706","#d97706","#d97706",
+            "#d97706","#059669","#059669","#059669","#059669",
+          ],
+          borderWidth: 1.5,
+          borderRadius: 5,
+          borderSkipped: false,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: "#f1f5f9" } },
+          x: { grid: { display: false } },
+        },
+      },
+    });
+  }
+
+  /* Pass / Fail doughnut chart */
+  const pfCtx = document.getElementById("chartPassFail");
+  if (pfCtx) {
+    const passed = {{ kpis.passed_count }};
+    const failed = {{ kpis.failed_count }};
+    if (passed + failed > 0) {
+      new Chart(pfCtx, {
+        type: "doughnut",
+        data: {
+          labels: ["Прошли", "Не прошли"],
+          datasets: [{
+            data: [passed, failed],
+            backgroundColor: ["#10b981", "#ef4444"],
+            borderWidth: 2,
+            borderColor: "#fff",
+          }],
+        },
+        options: {
+          responsive: true,
+          cutout: "62%",
+          plugins: {
+            legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 13 } } },
+          },
+        },
+      });
+    }
+  }
+})();
+</script>
+{% endblock %}

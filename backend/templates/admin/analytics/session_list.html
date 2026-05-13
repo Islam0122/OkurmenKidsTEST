@@ -1,0 +1,326 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Аналитика сессий — {{ block.super }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+/* ── CSS variables (consistent with KPI dashboard) ──────────────────────── */
+:root {
+  --an-navy:   #1f4e79;
+  --an-blue:   #2563eb;
+  --an-green:  #059669;
+  --an-red:    #dc2626;
+  --an-orange: #d97706;
+  --an-purple: #7c3aed;
+  --an-gray:   #64748b;
+  --an-border: #e2e8f0;
+  --an-bg:     #f8fafc;
+  --an-white:  #ffffff;
+  --radius:    12px;
+  --shadow:    0 2px 12px rgba(0,0,0,.07);
+}
+
+/* ── Page header ─────────────────────────────────────────────────────────── */
+.an-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.an-header-icon {
+  width: 50px; height: 50px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, var(--an-blue), var(--an-navy));
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 21px; flex-shrink: 0;
+}
+.an-header h1 {
+  margin: 0; font-size: 22px;
+  font-weight: 800; color: var(--an-navy);
+}
+.an-header p {
+  margin: 4px 0 0; font-size: 13px; color: var(--an-gray);
+}
+
+/* ── Search bar ──────────────────────────────────────────────────────────── */
+.an-search-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+.an-search-input {
+  flex: 1; max-width: 380px;
+  padding: 9px 14px;
+  border: 1.5px solid var(--an-border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--an-navy);
+  background: var(--an-white);
+  transition: border-color .15s;
+}
+.an-search-input:focus { outline: none; border-color: var(--an-blue); }
+.an-search-btn {
+  padding: 9px 20px;
+  background: var(--an-blue);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+  transition: filter .15s;
+}
+.an-search-btn:hover { filter: brightness(1.1); }
+.an-search-clear {
+  padding: 9px 16px;
+  background: var(--an-gray);
+  color: #fff; border: none;
+  border-radius: 8px; font-size: 13px; font-weight: 600;
+  text-decoration: none;
+  display: flex; align-items: center; gap: 5px;
+  transition: filter .15s;
+}
+.an-search-clear:hover { filter: brightness(1.1); color: #fff; }
+
+/* ── Table wrapper ───────────────────────────────────────────────────────── */
+.an-table-wrap {
+  background: var(--an-white);
+  border: 1px solid var(--an-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.an-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.an-table thead th {
+  background: var(--an-navy);
+  color: #fff;
+  padding: 11px 14px;
+  text-align: left;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.an-table tbody td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--an-border);
+  vertical-align: middle;
+}
+.an-table tbody tr:last-child td { border-bottom: none; }
+.an-table tbody tr:hover td { background: var(--an-bg); }
+
+/* ── Badges ──────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px; font-weight: 700;
+}
+.b-exam      { background: #fee2e2; color: #991b1b; }
+.b-training  { background: #ede9fe; color: #5b21b6; }
+.b-active    { background: #d1fae5; color: #065f46; }
+.b-inactive  { background: #f1f5f9; color: #475569; }
+
+/* ── Action button ───────────────────────────────────────────────────────── */
+.an-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 14px;
+  border-radius: 7px;
+  font-size: 12px; font-weight: 600;
+  text-decoration: none;
+  color: #fff;
+  transition: filter .15s, transform .12s;
+}
+.an-btn:hover { filter: brightness(1.1); transform: translateY(-1px); color: #fff; }
+.an-btn-detail  { background: linear-gradient(135deg, #3b82f6, #2563eb,color:white); }
+.an-btn-disabled {
+  background: #e2e8f0; color: #94a3b8 !important;
+  cursor: not-allowed; pointer-events: none;
+}
+
+/* ── Progress bar inline ─────────────────────────────────────────────────── */
+.mini-bar {
+  display: inline-block;
+  width: 60px; height: 5px;
+  background: #f1f5f9;
+  border-radius: 3px;
+  overflow: hidden;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.mini-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--an-blue), var(--an-green));
+  border-radius: 3px;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+.an-empty {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--an-gray);
+}
+.an-empty i { font-size: 48px; opacity: .25; margin-bottom: 12px; display: block; }
+
+/* ── Stats banner ────────────────────────────────────────────────────────── */
+.an-stats-banner {
+  display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px;
+}
+.an-stat-pill {
+  background: var(--an-white);
+  border: 1px solid var(--an-border);
+  border-radius: 10px;
+  padding: 10px 18px;
+  display: flex; align-items: center; gap: 8px;
+  box-shadow: var(--shadow);
+  font-size: 13px; font-weight: 600; color: var(--an-navy);
+}
+.an-stat-pill i { font-size: 16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div>
+
+{# ── Header ─────────────────────────────────────────────────────────────── #}
+<div class="an-header">
+  <div class="an-header-icon">
+    <i class="fas fa-chart-bar"></i>
+  </div>
+  <div>
+    <h1>Аналитика сессий</h1>
+    <p>Выберите сессию, чтобы просмотреть KPI и рейтинг студентов</p>
+  </div>
+</div>
+
+{# ── Stats banner ────────────────────────────────────────────────────────── #}
+<div class="an-stats-banner">
+  <div class="an-stat-pill">
+    <i class="fas fa-layer-group" style="color:var(--an-blue);"></i>
+    Сессий: <strong>{{ sessions|length }}</strong>
+  </div>
+</div>
+
+{# ── Search ──────────────────────────────────────────────────────────────── #}
+<form method="get" class="an-search-form">
+  <input type="text" name="q" class="an-search-input"
+         placeholder="Поиск по названию, тесту или ключу сессии…"
+         value="{{ search_query }}">
+  <button type="submit" class="an-search-btn">
+    <i class="fas fa-search"></i> Найти
+  </button>
+  {% if search_query %}
+  <a href="?" class="an-search-clear">
+    <i class="fas fa-times"></i> Сбросить
+  </a>
+  {% endif %}
+</form>
+
+{# ── Table ───────────────────────────────────────────────────────────────── #}
+<div class="an-table-wrap">
+  {% if sessions %}
+  <table class="an-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Сессия / Ключ</th>
+        <th>Тест</th>
+        <th>Тип</th>
+        <th>Статус</th>
+        <th>Попыток</th>
+        <th>Завершено</th>
+        <th>% завершения</th>
+        <th>Создана</th>
+        <th>Действие</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sessions %}
+      {% with finish_pct=s.finished_attempts|default:0 total=s.total_attempts|default:1 %}
+      <tr>
+        <td style="color:var(--an-gray); text-align:center;">{{ forloop.counter }}</td>
+
+        <td>
+          <strong>{{ s.title|default:s.key }}</strong>
+          {% if s.title %}
+            <br><span style="color:var(--an-gray);font-size:11px;">{{ s.key|slice:":16" }}…</span>
+          {% endif %}
+        </td>
+
+        <td>{{ s.test.title }}</td>
+
+        <td>
+          {% if s.session_type == "exam" %}
+            <span class="badge b-exam"><i class="fas fa-graduation-cap"></i> Экзамен</span>
+          {% else %}
+            <span class="badge b-training"><i class="fas fa-dumbbell"></i> Тренажёр</span>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if s.is_active %}
+            <span class="badge b-active">● Активна</span>
+          {% else %}
+            <span class="badge b-inactive">○ Завершена</span>
+          {% endif %}
+        </td>
+
+        <td style="text-align:center;"><strong>{{ s.total_attempts }}</strong></td>
+
+        <td style="text-align:center;color:var(--an-green);font-weight:700;">
+          {{ s.finished_attempts }}
+        </td>
+
+        <td>
+          {% if s.total_attempts > 0 %}
+            {% widthratio s.finished_attempts s.total_attempts 100 as pct %}
+            <span style="font-weight:700;color:{% if pct >= 75 %}var(--an-green){% elif pct >= 50 %}var(--an-orange){% else %}var(--an-red){% endif %};">
+              {{ pct }}%
+            </span>
+            <span class="mini-bar">
+              <span class="mini-bar-fill" style="width:{{ pct }}%;"></span>
+            </span>
+          {% else %}
+            <span style="color:var(--an-gray);">—</span>
+          {% endif %}
+        </td>
+
+        <td style="color:var(--an-gray); font-size:12px;">
+          {{ s.created_at|date:"d.m.Y H:i" }}
+        </td>
+
+        <td>
+          {% if s.finished_attempts > 0 %}
+            <a href="{% url 'admin:analytics_session_detail' s.id %}"
+               class="an-btn an-btn-detail">
+              <i class="fas fa-chart-pie"></i> Аналитика
+            </a>
+          {% else %}
+            <span class="an-btn an-btn-disabled">
+              <i class="fas fa-ban"></i> Нет данных
+            </span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endwith %}
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="an-empty">
+    <i class="fas fa-inbox"></i>
+    <p>{% if search_query %}Ничего не найдено по запросу «{{ search_query }}»{% else %}Сессий пока нет{% endif %}</p>
+  </div>
+  {% endif %}
+</div>
+
+</div>
+{% endblock %}
