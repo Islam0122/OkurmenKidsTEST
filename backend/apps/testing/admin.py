@@ -807,3 +807,36 @@ def _patched_get_urls(self):
 
 
 _site.__class__.get_urls = _patched_get_urls# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+from django.contrib.admin import site as _admin_site
+from django.urls import path as _path
+
+from .analytics.views import session_list_view, session_detail_view, session_export_view
+
+
+_orig_get_urls = _admin_site.__class__.get_urls
+
+
+def _patched_get_urls(self):
+    custom = [
+        _path(
+            "analytics/sessions/",
+            session_list_view,
+            name="analytics_session_list",
+        ),
+        _path(
+            "analytics/sessions/<str:session_id>/",
+            session_detail_view,
+            name="analytics_session_detail",
+        ),
+        _path(
+            "analytics/sessions/<str:session_id>/export/",
+            session_export_view,
+            name="analytics_session_export",
+        ),
+    ]
+    return custom + _orig_get_urls(self)
+
+
+_admin_site.__class__.get_urls = _patched_get_urls
