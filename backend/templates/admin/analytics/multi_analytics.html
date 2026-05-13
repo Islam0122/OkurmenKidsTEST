@@ -1,394 +1,593 @@
 {% extends "admin/base_site.html" %}
 {% load static %}
 
-{% block extrastyle %}
+{% block title %}{{ title }} — {{ block.super }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-    .analytics-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 16px;
-        margin-bottom: 24px;
-    }
+#ma-root {
+  --f-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --f-mono: 'DM Mono', 'Fira Code', monospace;
+  --ink:        #0f172a;
+  --ink-3:      #334155;
+  --ink-4:      #475569;
+  --muted:      #64748b;
+  --subtle:     #94a3b8;
+  --line:       #e2e8f0;
+  --surface:    #ffffff;
+  --bg:         #f8fafc;
+  --bg-2:       #f1f5f9;
+  --blue:       #2563eb;
+  --blue-dk:    #1d4ed8;
+  --blue-lt:    #dbeafe;
+  --green:      #059669;
+  --green-lt:   #d1fae5;
+  --amber:      #d97706;
+  --amber-lt:   #fef3c7;
+  --red:        #dc2626;
+  --red-lt:     #fee2e2;
+  --purple:     #7c3aed;
+  --purple-lt:  #ede9fe;
+  --teal:       #0891b2;
+  --teal-lt:    #cffafe;
+  --navy:       #1e3a5f;
+  --sh-xs: 0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --sh-sm: 0 2px 8px rgba(0,0,0,.08),0 1px 3px rgba(0,0,0,.04);
+  --sh-md: 0 4px 16px rgba(0,0,0,.1),0 2px 6px rgba(0,0,0,.05);
+  --r-sm: 6px; --r-md: 10px; --r-lg: 14px;
+  font-family: var(--f-sans);
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.6;
+}
+#ma-root *, #ma-root *::before, #ma-root *::after { box-sizing: border-box; }
+#ma-root { background: var(--bg); padding-bottom: 60px; }
 
-    .analytics-card {
-        background: var(--body-bg);
-        border-radius: 14px;
-        padding: 18px;
-        box-shadow: 0 2px 10px rgba(0,0,0,.06);
-        border: 1px solid var(--hairline-color);
-    }
+/* ─ TOOLBAR ─────────────────────────────────────────────────────────────── */
+#ma-toolbar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: rgba(255,255,255,.95);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+  padding: 12px 20px; margin-bottom: 24px;
+  box-shadow: var(--sh-sm);
+  position: sticky; top: 0; z-index: 90;
+}
+.ma-tb-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.ma-back-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 13px; background: var(--bg-2); color: var(--ink-4);
+  border-radius: var(--r-md); font-family: var(--f-sans); font-size: 13px; font-weight: 500;
+  text-decoration: none; border: 1px solid var(--line); white-space: nowrap;
+  transition: background .15s, color .15s, border-color .15s, box-shadow .15s;
+}
+.ma-back-btn:hover { background: var(--surface); color: var(--blue); border-color: var(--blue); box-shadow: var(--sh-xs); text-decoration: none; }
+.ma-tb-title {
+  font-size: 15px; font-weight: 700; color: var(--navy); letter-spacing: -.02em;
+  display: flex; align-items: center; gap: 8px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ma-tb-title i { color: var(--blue); font-size: 17px; flex-shrink: 0; }
+.ma-tb-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; background: var(--blue-lt); color: var(--blue-dk);
+  border-radius: 20px; font-size: 12px; font-weight: 600;
+  white-space: nowrap; flex-shrink: 0;
+}
+.ma-export-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 18px; background: linear-gradient(135deg,#10b981,#059669);
+  color: #fff; border-radius: var(--r-md); font-family: var(--f-sans);
+  font-size: 13px; font-weight: 600; text-decoration: none;
+  box-shadow: 0 2px 8px rgba(5,150,105,.28); white-space: nowrap; border: none; flex-shrink: 0;
+  transition: filter .15s, transform .15s, box-shadow .15s;
+}
+.ma-export-btn:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(5,150,105,.38); color: #fff; text-decoration: none; }
 
-    .analytics-card h3 {
-        margin: 0 0 8px;
-        font-size: 14px;
-        opacity: .7;
-    }
+/* ─ BODY ─────────────────────────────────────────────────────────────────── */
+.ma-body { padding: 0 20px; }
 
-    .analytics-card .value {
-        font-size: 30px;
-        font-weight: 700;
-    }
+/* ─ SECTION HEAD ─────────────────────────────────────────────────────────── */
+.ma-sec {
+  display: flex; align-items: center; gap: 10px;
+  margin: 28px 0 14px;
+  font-family: var(--f-sans); font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .07em; color: var(--muted);
+}
+.ma-sec::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.ma-sec i { font-size: 15px; color: var(--blue); }
 
-    .table-wrapper {
-        overflow-x: auto;
-        margin-top: 20px;
-    }
+/* ─ EMPTY STATE ──────────────────────────────────────────────────────────── */
+.ma-empty {
+  text-align: center; padding: 64px 24px;
+  background: var(--surface); border: 1px dashed var(--line); border-radius: var(--r-lg);
+}
+.ma-empty-ico {
+  width: 60px; height: 60px; border-radius: 50%; background: var(--bg-2);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px; font-size: 24px; color: var(--subtle);
+}
+.ma-empty h3 { margin: 0 0 6px; font-size: 18px; font-weight: 700; color: var(--ink-3); }
+.ma-empty p  { margin: 0 0 20px; color: var(--muted); }
 
-    .analytics-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
+/* ─ BUTTONS ──────────────────────────────────────────────────────────────── */
+.ma-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 18px; border-radius: var(--r-md);
+  font-family: var(--f-sans); font-size: 13px; font-weight: 600;
+  cursor: pointer; text-decoration: none; border: none; line-height: 1;
+  transition: all .15s;
+}
+.ma-btn-primary { background: var(--blue); color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,.22); }
+.ma-btn-primary:hover { background: var(--blue-dk); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(37,99,235,.32); color: #fff; text-decoration: none; }
+.ma-btn-ghost   { background: transparent; color: var(--muted); border: 1.5px solid var(--line); }
+.ma-btn-ghost:hover { background: var(--bg-2); color: var(--ink-4); text-decoration: none; }
 
-    .analytics-table th,
-    .analytics-table td {
-        padding: 12px;
-        border-bottom: 1px solid var(--hairline-color);
-        text-align: left;
-    }
+/* ─ FILTERS ──────────────────────────────────────────────────────────────── */
+.ma-filters { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh-xs); overflow: hidden; margin-bottom: 4px; }
+.ma-filters-toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; cursor: pointer; user-select: none; transition: background .12s;
+}
+.ma-filters-toggle-row:hover { background: var(--bg); }
+.ma-filters-toggle-label { font-size: 13px; font-weight: 700; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
+.ma-filters-toggle-label i { color: var(--blue); }
+.ma-filters-caret { font-size: 13px; color: var(--subtle); transition: transform .2s; }
+.ma-filters-caret.open { transform: rotate(180deg); }
+.ma-filters-body { border-top: 1px solid var(--line); padding: 18px 20px 20px; display: none; }
+.ma-filters-body.open { display: block; }
+.ma-filters-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(160px,1fr)); gap: 14px; }
+.ma-field label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 5px; }
+.ma-field input, .ma-field select {
+  width: 100%; padding: 9px 11px;
+  background: var(--bg); border: 1.5px solid var(--line); border-radius: var(--r-md);
+  font-family: var(--f-sans); font-size: 13px; color: var(--ink);
+  transition: border-color .15s, box-shadow .15s; appearance: none; -webkit-appearance: none;
+}
+.ma-field input:focus, .ma-field select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.1); background: var(--surface); }
+.ma-filters-actions { display: flex; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
 
-    .analytics-table th {
-        background: rgba(0,0,0,.03);
-        font-weight: 600;
-    }
+/* ─ KPI CARDS ────────────────────────────────────────────────────────────── */
+.ma-kpi-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(170px,1fr)); gap: 12px; }
+.ma-kpi-card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+  padding: 18px 16px 16px; box-shadow: var(--sh-xs);
+  position: relative; overflow: hidden;
+  transition: transform .18s, box-shadow .18s; cursor: default;
+  animation: ma-fadeup .35s ease both;
+}
+.ma-kpi-card::before {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 3px;
+  background: var(--acc,var(--blue)); border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+.ma-kpi-card:hover { transform: translateY(-3px); box-shadow: var(--sh-md); }
+.ma-kpi-icon {
+  width: 34px; height: 34px; border-radius: var(--r-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; margin-bottom: 12px;
+  background: var(--acc-lt,var(--blue-lt)); color: var(--acc,var(--blue));
+}
+.ma-kpi-num { font-size: 28px; font-weight: 800; letter-spacing: -.03em; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ma-kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: 6px; }
+.ma-kpi-sub { font-size: 11px; color: var(--subtle); margin-top: 3px; }
+.ma-kpi-bar { height: 3px; background: var(--bg-2); border-radius: 2px; overflow: hidden; margin-top: 10px; }
+.ma-kpi-bar-fill { height: 100%; border-radius: 2px; background: var(--acc,var(--blue)); transition: width .9s cubic-bezier(.4,0,.2,1) .2s; }
 
-    .filters-box {
-        background: var(--body-bg);
-        border-radius: 14px;
-        padding: 20px;
-        margin-bottom: 24px;
-        border: 1px solid var(--hairline-color);
-    }
+.a-blue   { --acc:var(--blue);   --acc-lt:var(--blue-lt);   }
+.a-green  { --acc:var(--green);  --acc-lt:var(--green-lt);  }
+.a-amber  { --acc:var(--amber);  --acc-lt:var(--amber-lt);  }
+.a-red    { --acc:var(--red);    --acc-lt:var(--red-lt);    }
+.a-purple { --acc:var(--purple); --acc-lt:var(--purple-lt); }
+.a-teal   { --acc:var(--teal);   --acc-lt:var(--teal-lt);   }
+.a-navy   { --acc:var(--navy);   --acc-lt:var(--blue-lt);   }
 
-    .filters-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 14px;
-    }
+.ma-kpi-card:nth-child(2) { animation-delay:.04s; }
+.ma-kpi-card:nth-child(3) { animation-delay:.08s; }
+.ma-kpi-card:nth-child(4) { animation-delay:.12s; }
+.ma-kpi-card:nth-child(5) { animation-delay:.16s; }
+.ma-kpi-card:nth-child(6) { animation-delay:.20s; }
+.ma-kpi-card:nth-child(7) { animation-delay:.24s; }
+.ma-kpi-card:nth-child(8) { animation-delay:.28s; }
 
-    .filters-grid input,
-    .filters-grid select {
-        width: 100%;
-        padding: 10px;
-        border-radius: 8px;
-        border: 1px solid var(--hairline-color);
-    }
+/* ─ CHARTS ───────────────────────────────────────────────────────────────── */
+.ma-charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 860px) { .ma-charts-row { grid-template-columns: 1fr; } }
+.ma-chart-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 18px 20px; box-shadow: var(--sh-xs); }
+.ma-chart-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 13px; font-weight: 700; color: var(--ink-3); }
+.ma-chart-hdr i { color: var(--blue); font-size: 15px; }
+.ma-chart-wrap { position: relative; height: 220px; }
 
-    .chart-box {
-        background: var(--body-bg);
-        border-radius: 14px;
-        padding: 20px;
-        margin-top: 24px;
-        border: 1px solid var(--hairline-color);
-    }
+/* ─ TABLE ────────────────────────────────────────────────────────────────── */
+.ma-table-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-xs); }
+.ma-table-hdr { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); background: var(--bg); }
+.ma-table-hdr-title { font-size: 14px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+.ma-table-hdr-title i { color: var(--amber); }
+.ma-sort-hint { font-size: 11px; color: var(--subtle); display: flex; align-items: center; gap: 4px; }
+.ma-tbl-scroll { overflow-x: auto; }
+.ma-tbl { width: 100%; border-collapse: collapse; font-family: var(--f-sans); font-size: 13px; }
+.ma-tbl thead th { background: var(--bg-2); color: var(--muted); padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; border-bottom: 1px solid var(--line); }
+.ma-tbl thead th.tc { text-align: center; }
+.ma-tbl tbody tr { border-bottom: 1px solid var(--line); transition: background .1s; }
+.ma-tbl tbody tr:last-child { border-bottom: none; }
+.ma-tbl tbody tr:hover { background: var(--bg); }
+.ma-tbl tbody tr.rk-gold   { background: linear-gradient(90deg,rgba(253,230,138,.14),transparent); }
+.ma-tbl tbody tr.rk-silver { background: linear-gradient(90deg,rgba(203,213,225,.12),transparent); }
+.ma-tbl tbody tr.rk-bronze { background: linear-gradient(90deg,rgba(251,191,36,.08),transparent); }
+.ma-tbl tbody tr.rk-gold:hover   { background: linear-gradient(90deg,rgba(253,230,138,.22),transparent); }
+.ma-tbl tbody tr.rk-silver:hover { background: linear-gradient(90deg,rgba(203,213,225,.2),transparent); }
+.ma-tbl tbody tr.rk-bronze:hover { background: linear-gradient(90deg,rgba(251,191,36,.15),transparent); }
+.ma-tbl td { padding: 11px 14px; vertical-align: middle; }
+.ma-tbl td.tc { text-align: center; }
 
-    .top-section {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 24px;
-        gap: 16px;
-        flex-wrap: wrap;
-    }
+.ma-rank-medal { font-size: 19px; line-height: 1; }
+.ma-rank-num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--bg-2); color: var(--muted); font-size: 12px; font-weight: 700; }
+.ma-student-name { font-weight: 600; color: var(--ink); }
+.ma-session-chip { display: inline-block; padding: 2px 8px; background: var(--blue-lt); color: var(--blue-dk); border-radius: 5px; font-size: 11px; font-weight: 600; margin-top: 2px; }
+.ma-test-label { font-size: 12px; color: var(--muted); }
+.ma-score-badge { display: inline-flex; align-items: center; gap: 3px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ma-score-pass { background: var(--green-lt); color: var(--green); }
+.ma-score-mid  { background: var(--amber-lt); color: var(--amber); }
+.ma-score-fail { background: var(--red-lt);   color: var(--red);   }
+.ma-status-pill { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.ma-pass { background: var(--green-lt); color: var(--green); }
+.ma-fail { background: var(--red-lt);   color: var(--red);   }
+.ma-dur-text  { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.ma-time-text { font-size: 12px; color: var(--subtle); }
+.ma-tbl-empty { text-align: center; padding: 44px 24px; color: var(--muted); }
+.ma-tbl-empty i { font-size: 30px; display: block; margin-bottom: 10px; opacity: .25; }
 
-    .export-btn {
-        padding: 10px 18px;
-        border-radius: 10px;
-        text-decoration: none;
-        font-weight: 600;
-    }
+/* ─ ANIMATION ────────────────────────────────────────────────────────────── */
+@keyframes ma-fadeup { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 
-    .badge {
-        padding: 6px 10px;
-        border-radius: 999px;
-        font-size: 12px;
-        font-weight: 600;
-    }
+/* ─ UTIL ──────────────────────────────────────────────────────────────────── */
+.t-green { color: var(--green) !important; }
+.t-red   { color: var(--red)   !important; }
+.t-amber { color: var(--amber) !important; }
+.t-muted { color: var(--muted) !important; }
 
-    .badge-success {
-        background: #d1fae5;
-        color: #065f46;
-    }
-
-    .badge-danger {
-        background: #fee2e2;
-        color: #991b1b;
-    }
+/* ─ RESPONSIVE ───────────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .ma-body { padding: 0 12px; }
+  #ma-toolbar { padding: 10px 12px; }
+  .ma-kpi-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 440px) {
+  .ma-kpi-num { font-size: 22px; }
+  .ma-kpi-grid { gap: 8px; }
+}
 </style>
 {% endblock %}
 
+
 {% block content %}
+<div id="ma-root">
 
-<div class="top-section">
-    <div>
-        <h1>{{ title }}</h1>
-        <p>
-            Выбрано сессий:
-            <strong>{{ data.selected_sessions_count }}</strong>
-        </p>
+  <div id="ma-toolbar">
+    <div class="ma-tb-left">
+      <a href="{% url 'admin:analytics_session_list' %}" class="ma-back-btn">
+        <i class="bi bi-arrow-left"></i>
+        Назад
+      </a>
+      <div class="ma-tb-title">
+        <i class="bi bi-graph-up-arrow"></i>
+        {{ title }}
+        {% if not no_sessions %}
+        <span class="ma-tb-chip">
+          <i class="bi bi-layers-fill"></i>
+          {{ data.kpis.session_count|default:"0" }} сессий
+        </span>
+        {% endif %}
+      </div>
     </div>
-
-    <a class="button export-btn"
-       href="{% url 'admin:analytics_multi_export' %}?sessions={{ session_ids_csv }}" >
-        Export Excel
+    {% if not no_sessions %}
+    <a class="ma-export-btn"
+       href="{% url 'admin:analytics_multi_export' %}?sessions={{ session_ids_csv }}{% if filters.date_from %}&date_from={{ filters.date_from }}{% endif %}{% if filters.date_to %}&date_to={{ filters.date_to }}{% endif %}{% if filters.min_score is not None %}&min_score={{ filters.min_score }}{% endif %}{% if filters.max_score is not None %}&max_score={{ filters.max_score }}{% endif %}&dedup={{ filters.dedup_mode }}">
+      <i class="bi bi-file-earmark-excel-fill"></i>
+      Экспорт Excel
     </a>
-</div>
+    {% endif %}
+  </div>
 
-{% if no_sessions %}
-    <div class="messagelist">
-        <div class="warning">
-            Не выбрано ни одной сессии.
+  <div class="ma-body">
+
+    {% if no_sessions %}
+
+    <div class="ma-empty">
+      <div class="ma-empty-ico"><i class="bi bi-bar-chart-line"></i></div>
+      <h3>Сессии не выбраны</h3>
+      <p>Перейдите к списку и выберите одну или несколько сессий для анализа.</p>
+      <a href="{% url 'admin:analytics_session_list' %}" class="ma-btn ma-btn-primary">
+        <i class="bi bi-list-ul"></i>
+        К списку сессий
+      </a>
+    </div>
+
+    {% else %}
+
+    <div class="ma-sec"><i class="bi bi-sliders"></i> Фильтры</div>
+
+    <div class="ma-filters">
+      <div class="ma-filters-toggle-row" id="ma-filters-toggle">
+        <div class="ma-filters-toggle-label">
+          <i class="bi bi-funnel-fill"></i>
+          Параметры выборки
         </div>
+        <i class="bi bi-chevron-down ma-filters-caret" id="ma-filters-caret"></i>
+      </div>
+      <div class="ma-filters-body" id="ma-filters-body">
+        <form method="get" id="ma-filter-form">
+          <input type="hidden" name="sessions" value="{{ session_ids_csv }}">
+          <div class="ma-filters-grid">
+            <div class="ma-field">
+              <label>Дата от</label>
+              <input type="date" name="date_from" value="{{ filters.date_from|default:'' }}">
+            </div>
+            <div class="ma-field">
+              <label>Дата до</label>
+              <input type="date" name="date_to" value="{{ filters.date_to|default:'' }}">
+            </div>
+            <div class="ma-field">
+              <label>Мин. балл</label>
+              <input type="number" step="0.1" min="0" max="100" name="min_score"
+                     placeholder="0" value="{{ filters.min_score|default:'' }}">
+            </div>
+            <div class="ma-field">
+              <label>Макс. балл</label>
+              <input type="number" step="0.1" min="0" max="100" name="max_score"
+                     placeholder="100" value="{{ filters.max_score|default:'' }}">
+            </div>
+            <div class="ma-field">
+              <label>Режим рейтинга</label>
+              <select name="dedup">
+                <option value="best" {% if filters.dedup_mode == 'best' %}selected{% endif %}>Лучший результат</option>
+                <option value="all"  {% if filters.dedup_mode == 'all'  %}selected{% endif %}>Все попытки</option>
+              </select>
+            </div>
+          </div>
+          <div class="ma-filters-actions">
+            <button type="submit" class="ma-btn ma-btn-primary">
+              <i class="bi bi-check2"></i> Применить
+            </button>
+            <a href="?sessions={{ session_ids_csv }}" class="ma-btn ma-btn-ghost">
+              <i class="bi bi-x-circle"></i> Сбросить
+            </a>
+          </div>
+        </form>
+      </div>
     </div>
-{% else %}
 
-<form method="get" class="filters-box">
+    <div class="ma-sec"><i class="bi bi-speedometer2"></i> Ключевые метрики</div>
 
-    <input type="hidden" name="sessions" value="{{ session_ids_csv }}">
+    <div class="ma-kpi-grid">
 
-    <div class="filters-grid">
+      <div class="ma-kpi-card a-blue">
+        <div class="ma-kpi-icon"><i class="bi bi-people-fill"></i></div>
+        <div class="ma-kpi-num" data-counter="{{ data.kpis.unique_students|default:0 }}">{{ data.kpis.unique_students|default:0 }}</div>
+        <div class="ma-kpi-label">Уникальных студентов</div>
+      </div>
 
-        <div>
-            <label>Дата от</label>
-            <input type="date" name="date_from" value="{{ filters.date_from|default:'' }}">
+      <div class="ma-kpi-card a-navy">
+        <div class="ma-kpi-icon"><i class="bi bi-clipboard2-data-fill"></i></div>
+        <div class="ma-kpi-num" data-counter="{{ data.kpis.total_count|default:0 }}">{{ data.kpis.total_count|default:0 }}</div>
+        <div class="ma-kpi-label">Всего попыток</div>
+        <div class="ma-kpi-sub">
+          <span class="t-green">{{ data.kpis.finished_count|default:0 }} завершено</span>
+          &nbsp;&middot;&nbsp;
+          <span class="t-amber">{{ data.kpis.active_count|default:0 }} активных</span>
         </div>
+      </div>
 
-        <div>
-            <label>Дата до</label>
-            <input type="date" name="date_to" value="{{ filters.date_to|default:'' }}">
+      <div class="ma-kpi-card a-green">
+        <div class="ma-kpi-icon"><i class="bi bi-bar-chart-fill"></i></div>
+        <div class="ma-kpi-num" data-counter="{{ data.kpis.avg_score|default:0 }}" data-float="1">{{ data.kpis.avg_score|default:0 }}</div>
+        <div class="ma-kpi-label">Средний балл</div>
+        <div class="ma-kpi-bar"><div class="ma-kpi-bar-fill" style="width:{{ data.kpis.avg_score|default:0 }}%;"></div></div>
+      </div>
+
+      <div class="ma-kpi-card a-teal">
+        <div class="ma-kpi-icon"><i class="bi bi-trophy-fill"></i></div>
+        <div class="ma-kpi-num" data-counter="{{ data.kpis.max_score|default:0 }}" data-float="1">{{ data.kpis.max_score|default:0 }}</div>
+        <div class="ma-kpi-label">Максимальный балл</div>
+        <div class="ma-kpi-sub t-muted">Мин: <strong>{{ data.kpis.min_score|default:0 }}</strong></div>
+      </div>
+
+      <div class="ma-kpi-card a-purple">
+        <div class="ma-kpi-icon"><i class="bi bi-percent"></i></div>
+        <div class="ma-kpi-num" data-counter="{{ data.kpis.pass_rate|default:0 }}" data-float="1" data-suffix="%">{{ data.kpis.pass_rate|default:0 }}%</div>
+        <div class="ma-kpi-label">Прохождение</div>
+        <div class="ma-kpi-bar"><div class="ma-kpi-bar-fill" style="width:{{ data.kpis.pass_rate|default:0 }}%;"></div></div>
+      </div>
+
+      <div class="ma-kpi-card a-green">
+        <div class="ma-kpi-icon"><i class="bi bi-check-circle-fill"></i></div>
+        <div class="ma-kpi-num" data-counter="{{ data.kpis.passed_count|default:0 }}">{{ data.kpis.passed_count|default:0 }}</div>
+        <div class="ma-kpi-label">Прошли &ge;75%</div>
+      </div>
+
+      <div class="ma-kpi-card a-red">
+        <div class="ma-kpi-icon"><i class="bi bi-x-circle-fill"></i></div>
+        <div class="ma-kpi-num" data-counter="{{ data.kpis.failed_count|default:0 }}">{{ data.kpis.failed_count|default:0 }}</div>
+        <div class="ma-kpi-label">Не прошли &lt;75%</div>
+      </div>
+
+      <div class="ma-kpi-card a-amber">
+        <div class="ma-kpi-icon"><i class="bi bi-stopwatch-fill"></i></div>
+        <div class="ma-kpi-num" style="font-size:20px;letter-spacing:-.01em;">{{ data.kpis.avg_duration_fmt|default:"—" }}</div>
+        <div class="ma-kpi-label">Среднее время</div>
+      </div>
+
+    </div>
+
+    <div class="ma-sec"><i class="bi bi-bar-chart-line-fill"></i> Графики</div>
+
+    <div class="ma-charts-row">
+      <div class="ma-chart-card">
+        <div class="ma-chart-hdr"><i class="bi bi-bar-chart-steps"></i> Распределение баллов</div>
+        <div class="ma-chart-wrap"><canvas id="maScoreChart"></canvas></div>
+      </div>
+      <div class="ma-chart-card">
+        <div class="ma-chart-hdr"><i class="bi bi-calendar-week-fill"></i> Попытки по дням</div>
+        <div class="ma-chart-wrap"><canvas id="maAttemptsChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="ma-sec"><i class="bi bi-award-fill"></i> Рейтинг студентов</div>
+
+    <div class="ma-table-card">
+      <div class="ma-table-hdr">
+        <div class="ma-table-hdr-title">
+          <i class="bi bi-list-ol"></i> Результаты
         </div>
-
-        <div>
-            <label>Мин балл</label>
-            <input type="number" step="0.1" name="min_score"
-                   value="{{ filters.min_score|default:'' }}">
+        <div class="ma-sort-hint">
+          <i class="bi bi-sort-down"></i>
+          Балл убывает &middot; Время возрастает
         </div>
-
-        <div>
-            <label>Макс балл</label>
-            <input type="number" step="0.1" name="max_score"
-                   value="{{ filters.max_score|default:'' }}">
-        </div>
-
-        <div>
-            <label>Режим</label>
-            <select name="dedup">
-                <option value="best"
-                    {% if filters.dedup_mode == 'best' %}selected{% endif %}>
-                    Лучший результат
-                </option>
-
-                <option value="all"
-                    {% if filters.dedup_mode == 'all' %}selected{% endif %}>
-                    Все попытки
-                </option>
-            </select>
-        </div>
-
-    </div>
-
-    <div style="margin-top:16px;">
-        <button type="submit" class="button default">
-            Применить фильтры
-        </button>
-    </div>
-
-</form>
-
-
-<!-- KPI -->
-
-<div class="analytics-grid">
-
-    <div class="analytics-card">
-        <h3>Уникальных студентов</h3>
-        <div class="value">{{ data.kpis.unique_students }}</div>
-    </div>
-
-    <div class="analytics-card">
-        <h3>Всего попыток</h3>
-        <div class="value">{{ data.kpis.total_attempts }}</div>
-    </div>
-
-    <div class="analytics-card">
-        <h3>Средний балл</h3>
-        <div class="value">{{ data.kpis.avg_score }}</div>
-    </div>
-
-    <div class="analytics-card">
-        <h3>Максимальный балл</h3>
-        <div class="value">{{ data.kpis.max_score }}</div>
-    </div>
-
-    <div class="analytics-card">
-        <h3>Минимальный балл</h3>
-        <div class="value">{{ data.kpis.min_score }}</div>
-    </div>
-
-    <div class="analytics-card">
-        <h3>Процент прохождения</h3>
-        <div class="value">{{ data.kpis.pass_rate }}%</div>
-    </div>
-
-    <div class="analytics-card">
-        <h3>Среднее время</h3>
-        <div class="value">{{ data.kpis.avg_duration_fmt }}</div>
-    </div>
-
-    <div class="analytics-card">
-        <h3>Завершённых</h3>
-        <div class="value">{{ data.kpis.finished_attempts }}</div>
-    </div>
-
-</div>
-
-
-<!-- Ranking -->
-
-<div class="table-wrapper">
-
-    <table class="analytics-table">
-
-        <thead>
+      </div>
+      <div class="ma-tbl-scroll">
+        <table class="ma-tbl">
+          <thead>
             <tr>
-                <th>#</th>
-                <th>Студент</th>
-                <th>Сессия</th>
-                <th>Тест</th>
-                <th>Балл</th>
-                <th>Время</th>
-                <th>Статус</th>
-                <th>Завершено</th>
+              <th class="tc" style="width:56px;">#</th>
+              <th>Студент</th>
+              <th>Сессия</th>
+              <th>Тест</th>
+              <th class="tc">Балл</th>
+              <th class="tc">Время</th>
+              <th class="tc">Статус</th>
+              <th>Завершено</th>
             </tr>
-        </thead>
-
-        <tbody>
-
-        {% for row in data.ranking %}
-
+          </thead>
+          <tbody>
+            {% for row in data.ranking %}
+            <tr class="{% if row.rank == 1 %}rk-gold{% elif row.rank == 2 %}rk-silver{% elif row.rank == 3 %}rk-bronze{% endif %}">
+              <td class="tc">
+                {% if row.rank == 1 %}<span class="ma-rank-medal" title="1 место">&#129351;</span>
+                {% elif row.rank == 2 %}<span class="ma-rank-medal" title="2 место">&#129352;</span>
+                {% elif row.rank == 3 %}<span class="ma-rank-medal" title="3 место">&#129353;</span>
+                {% else %}<span class="ma-rank-num">{{ row.rank }}</span>
+                {% endif %}
+              </td>
+              <td><div class="ma-student-name">{{ row.student_name }}</div></td>
+              <td><span class="ma-session-chip">{{ row.session_title|truncatechars:20 }}</span></td>
+              <td><span class="ma-test-label">{{ row.test_title|truncatechars:24 }}</span></td>
+              <td class="tc">
+                <span class="ma-score-badge {% if row.score >= 75 %}ma-score-pass{% elif row.score >= 50 %}ma-score-mid{% else %}ma-score-fail{% endif %}">
+                  {{ row.score }}
+                </span>
+              </td>
+              <td class="tc"><span class="ma-dur-text">{{ row.duration_fmt }}</span></td>
+              <td class="tc">
+                {% if row.score >= 75 %}
+                <span class="ma-status-pill ma-pass"><i class="bi bi-check-lg"></i> PASS</span>
+                {% else %}
+                <span class="ma-status-pill ma-fail"><i class="bi bi-x-lg"></i> FAIL</span>
+                {% endif %}
+              </td>
+              <td><span class="ma-time-text">{{ row.finished_at|default:"—" }}</span></td>
+            </tr>
+            {% empty %}
             <tr>
-
-                <td>{{ row.rank }}</td>
-
-                <td>
-                    <strong>{{ row.student_name }}</strong>
-                </td>
-
-                <td>{{ row.session_title }}</td>
-
-                <td>{{ row.test_title }}</td>
-
-                <td>
-                    <strong>{{ row.score }}</strong>
-                </td>
-
-                <td>{{ row.duration_fmt }}</td>
-
-                <td>
-                    {% if row.score >= 75 %}
-                        <span class="badge badge-success">
-                            PASS
-                        </span>
-                    {% else %}
-                        <span class="badge badge-danger">
-                            FAIL
-                        </span>
-                    {% endif %}
-                </td>
-
-                <td>{{ row.finished_at }}</td>
-
+              <td colspan="8">
+                <div class="ma-tbl-empty">
+                  <i class="bi bi-inbox"></i>
+                  <p>Нет завершённых попыток</p>
+                </div>
+              </td>
             </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-        {% empty %}
+    {% endif %}
 
-            <tr>
-                <td colspan="8">
-                    Нет данных.
-                </td>
-            </tr>
-
-        {% endfor %}
-
-        </tbody>
-
-    </table>
-
+  </div>
 </div>
 
-
-<!-- Charts -->
-
-<div class="chart-box">
-    <h2>Распределение баллов</h2>
-    <canvas id="scoreChart" height="120"></canvas>
-</div>
-
-<div class="chart-box">
-    <h2>Попытки по дням</h2>
-    <canvas id="attemptsChart" height="120"></canvas>
-</div>
-
-{% endif %}
-
-{% endblock %}
-
-
-{% block extrahead %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-{% endblock %}
-
-
-{% block footer %}
-
-{{ block.super }}
 
 <script>
+(function () {
+  'use strict';
 
-const scoreBuckets = {{ score_buckets_json|safe }};
-const attemptsByDay = {{ attempts_by_day_json|safe }};
+  if (typeof Chart !== 'undefined') {
+    Chart.defaults.font.family = "'DM Sans', system-ui, sans-serif";
+    Chart.defaults.color = '#64748b';
 
-const scoreCtx = document.getElementById('scoreChart');
-
-if (scoreCtx && scoreBuckets.length > 0) {
-
-    new Chart(scoreCtx, {
+    var scoreBuckets = {{ score_buckets_json|safe }};
+    var scoreEl = document.getElementById('maScoreChart');
+    if (scoreEl && scoreBuckets.length) {
+      var bgC = scoreBuckets.map(function(b) { var lo = parseInt(b.range,10); return lo>=70?'#d1fae5':lo>=40?'#fef3c7':'#fee2e2'; });
+      var bdC = scoreBuckets.map(function(b) { var lo = parseInt(b.range,10); return lo>=70?'#059669':lo>=40?'#d97706':'#dc2626'; });
+      new Chart(scoreEl, {
         type: 'bar',
         data: {
-            labels: scoreBuckets.map(i => i.range),
-            datasets: [{
-                label: 'Количество',
-                data: scoreBuckets.map(i => i.count)
-            }]
+          labels: scoreBuckets.map(function(b){ return b.range; }),
+          datasets: [{ data: scoreBuckets.map(function(b){ return b.count; }), backgroundColor: bgC, borderColor: bdC, borderWidth: 1.5, borderRadius: 6, borderSkipped: false }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
-        }
-    });
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grid: { color: 'rgba(0,0,0,.05)' }, border: { dash: [4,4] } }, x: { grid: { display: false } } } }
+      });
+    }
 
-}
-
-const attemptsCtx = document.getElementById('attemptsChart');
-
-if (attemptsCtx && attemptsByDay.length > 0) {
-
-    new Chart(attemptsCtx, {
+    var byDay = {{ attempts_by_day_json|safe }};
+    var dayEl = document.getElementById('maAttemptsChart');
+    if (dayEl && byDay.length) {
+      new Chart(dayEl, {
         type: 'line',
         data: {
-            labels: attemptsByDay.map(i => i.day),
-            datasets: [{
-                label: 'Попытки',
-                data: attemptsByDay.map(i => i.count)
-            }]
+          labels: byDay.map(function(d){ return d.day; }),
+          datasets: [{ label: 'Попытки', data: byDay.map(function(d){ return d.count; }), borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,.08)', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#2563eb', pointBorderColor: '#fff', pointBorderWidth: 2, tension: 0.4, fill: true }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grid: { color: 'rgba(0,0,0,.05)' }, border: { dash: [4,4] } }, x: { grid: { display: false }, ticks: { maxRotation: 40 } } } }
+      });
+    }
+  }
+
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (!e.isIntersecting) return;
+        var el     = e.target;
+        var target = parseFloat(el.dataset.counter) || 0;
+        var suffix = el.dataset.suffix || '';
+        var isF    = el.dataset.float === '1';
+        var dur    = 800;
+        var t0     = performance.now();
+        function tick(now) {
+          var p    = Math.min((now - t0) / dur, 1);
+          var ease = 1 - Math.pow(1 - p, 3);
+          el.textContent = (isF ? (target * ease).toFixed(1) : Math.round(target * ease)) + suffix;
+          if (p < 1) requestAnimationFrame(tick);
         }
+        requestAnimationFrame(tick);
+        io.unobserve(el);
+      });
+    }, { threshold: 0.3 });
+    document.querySelectorAll('[data-counter]').forEach(function(el) { io.observe(el); });
+  }
+
+  var toggleRow  = document.getElementById('ma-filters-toggle');
+  var filterBody = document.getElementById('ma-filters-body');
+  var caret      = document.getElementById('ma-filters-caret');
+  if (toggleRow && filterBody) {
+    toggleRow.addEventListener('click', function() {
+      var open = filterBody.classList.toggle('open');
+      if (caret) caret.classList.toggle('open', open);
     });
-
-}
-
+    var form = document.getElementById('ma-filter-form');
+    if (form) {
+      var inputs = form.querySelectorAll('input[type=date],input[type=number],select');
+      var hasActive = [].some.call(inputs, function(el) { return el.value !== '' && el.value !== el.defaultValue; });
+      if (hasActive) { filterBody.classList.add('open'); if (caret) caret.classList.add('open'); }
+    }
+  }
+}());
 </script>
-
 {% endblock %}
