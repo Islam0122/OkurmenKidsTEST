@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 from rest_framework import status as http_status
 
 from .services.attempt_review import AttemptReviewService
-from .serializers.review import AttemptReviewSerializer
+from .serializersv2.review import AttemptReviewSerializer
 
 logger = logging.getLogger(__name__)
 
