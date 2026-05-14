@@ -12,6 +12,20 @@ DEBUG = True
 ALLOWED_HOSTS = []
 GIGACHAT_CLIENT_ID = env('GIGACHAT_CLIENT_ID', default='')
 GIGACHAT_SECRET    = env('GIGACHAT_SECRET',    default='')
+SEND_TELEGRAM_REPORTS = env.bool(
+    "SEND_TELEGRAM_REPORTS",
+    default=True,
+)
+
+TELEGRAM_BOT_TOKEN = env.str(
+    "TELEGRAM_BOT_TOKEN",
+    default="",
+)
+
+TELEGRAM_GROUP_ID = env.str(
+    "TELEGRAM_GROUP_ID",
+    default="",
+)
 
 DJANGO_APPS = [
     'jazzmin',

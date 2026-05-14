@@ -26,6 +26,7 @@ app.conf.task_default_routing_key  = 'default'
 app.conf.task_routes = {
     'testing.grade_answer_task':            {'queue': 'ai_grading', 'routing_key': 'ai_grading'},
     'testing.regrade_pending_answers_task': {'queue': 'ai_grading', 'routing_key': 'ai_grading'},
+    "testing.send_session_report_task": {"queue": "default", "routing_key": "default"},
 }
 
 app.conf.beat_schedule = {
@@ -38,3 +39,4 @@ app.conf.beat_schedule = {
         'schedule': crontab(minute='*/5'),
     },
 }
+
