@@ -1,17 +1,3 @@
-"""
-urls.py — Testing app URL configuration.
-
-NOTE: app_name / namespace removed from this file.
-      django-import-export internally uses reverse('admin:testing_*_changelist')
-      which only works when the app's admin is registered under the default
-      'admin' namespace.  A conflicting 'testing' namespace in include() causes
-      "Could not reverse url" warnings in the console.
-
-      If you need named URLs for the custom HTML views (import_upload, etc.),
-      use plain names WITHOUT a namespace prefix and reference them without
-      the 'testing:' prefix in templates.
-"""
-
 from django.urls import path
 from . import views
 from .api_views import (
@@ -25,9 +11,8 @@ from .api_views import (
     LeaderboardView
 )
 from .api_views import SessionLeaderboardView, SessionResultsTableView
+from .review_view import AttemptReviewView
 
-
-# NO app_name here — keeps import-export admin URL reversals clean.
 
 urlpatterns = [
     # ── HTML staff views ──────────────────────────────────────────────────────
@@ -71,5 +56,10 @@ urlpatterns = [
         SessionResultsTableView.as_view(),
         name='api-session-results-table',
     ),
+    path(
+          "api/testing/attempts/<uuid:attempt_id>/review/",
+          AttemptReviewView.as_view(),
+          name="api-attempt-review",
+      ),
 ]
 
