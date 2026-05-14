@@ -1,10 +1,4 @@
-"""
-apps/testing/views/review.py
 
-GET /api/testing/attempts/<attempt_id>/review/
-
-Returns full attempt review: mistakes, per-type accuracy, summary.
-"""
 
 from __future__ import annotations
 
@@ -17,8 +11,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status as http_status
 
-from apps.testing.services.attempt_review import AttemptReviewService
-from apps.testing.serializers.review import AttemptReviewSerializer
+from .services.attempt_review import AttemptReviewService
+from .serializers.review import AttemptReviewSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -68,21 +62,3 @@ class AttemptReviewView(APIView):
         serializer = AttemptReviewSerializer(data)
         return Response(serializer.data, status=http_status.HTTP_200_OK)
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# URL registration snippet
-# ─────────────────────────────────────────────────────────────────────────────
-#
-# Add to apps/testing/urls.py:
-#
-#   from .views.review import AttemptReviewView
-#
-#   urlpatterns += [
-#       path(
-#           "api/testing/attempts/<uuid:attempt_id>/review/",
-#           AttemptReviewView.as_view(),
-#           name="api-attempt-review",
-#       ),
-#   ]
-#
-# ─────────────────────────────────────────────────────────────────────────────
