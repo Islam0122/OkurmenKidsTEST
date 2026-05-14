@@ -394,82 +394,32 @@ class _ReportBuilder:
         sep = cls.SEP
 
         a("📊 <b>Отчет по тестовой сессии</b>")
-        a("")
         a(f"📚 <b>Тест:</b> {_esc(report.test_title)}")
         a(f"👥 <b>Группа:</b> {_esc(report.group_label)}")
         a(f"🕒 <b>Дата:</b> {report.created_at.strftime('%d.%m.%Y %H:%M')}")
-
-        # Длительность сессии
         dur = _fmt_hours(report.duration_hours)
         a(f"⏳ <b>Длительность сессии:</b> {dur}")
-
-        a("")
-        a(sep)
-        a("")
         a(f"👨‍🎓 <b>Всего студентов:</b> {report.total_students}")
         a(f"✅ <b>Завершили:</b> {report.finished_count}")
         a(f"❌ <b>Не завершили:</b> {report.not_finished_count}")
         a(f"⌛ <b>Expired:</b> {report.expired_count}")
-
-        a("")
-        a(sep)
-        a("")
         a(f"📈 <b>Средний KPI:</b> {report.avg_kpi}%")
         a(f"🏆 <b>Лучший результат:</b> {report.best_kpi}%")
         a(f"📉 <b>Худший результат:</b> {report.worst_kpi}%")
         a(f"🔥 <b>Процент прохождения теста:</b> {report.pass_rate}%")
-
-        # Топ студентов
         if report.top_students:
-            a("")
-            a(sep)
-            a("")
             a("🥇 <b>ТОП студентов:</b>")
-            a("")
             medals = ["1️⃣", "2️⃣", "3️⃣"]
             for i, (name, score) in enumerate(report.top_students):
                 medal = medals[i] if i < len(medals) else f"{i+1}."
                 a(f"{medal} {_esc(name)} — <b>{score}%</b>")
-
-        # Студенты с низким KPI
-        if report.low_kpi_students:
-            a("")
-            a(sep)
-            a("")
-            a("⚠️ <b>Студенты с низким KPI:</b>")
-            a("")
-            for name, score in report.low_kpi_students:
-                a(f"• {_esc(name)} — <b>{score}%</b>")
-
-        # Статистика по вопросам
         if report.question_type_stats:
-            a("")
-            a(sep)
-            a("")
             a("📌 <b>Статистика по вопросам:</b>")
-            a("")
             for qt in report.question_type_stats:
                 icon = "✅" if qt.rate >= 70 else "⚠️"
                 a(f"{icon} {qt.label}: <b>{qt.rate}%</b>")
 
-        # AI Проверка
-        a("")
-        a(sep)
-        a("")
-        a("🧠 <b>AI Проверка:</b>")
-        a("")
-        a(f"🤖 <b>Проверено AI:</b> {report.ai_total_checked} ответов")
-        a(f"❌ <b>Ошибок AI:</b> {report.ai_errors}")
-        a(f"🛠 <b>Manual Review:</b> {report.ai_manual_review}")
-        if report.ai_avg_score is not None:
-            a(f"📈 <b>Средний AI Score:</b> {report.ai_avg_score}/10")
-
-        # Дополнительно
-        a("")
-        a(sep)
-        a("")
         a("📊 <b>Дополнительно:</b>")
-        a("")
         a(f"🟢 <b>Active attempts:</b> {report.active_attempts}")
         a(f"🔴 <b>Expired attempts:</b> {report.expired_attempts}")
         avg_dur_str = _fmt_seconds(report.avg_duration_seconds) if report.avg_duration_seconds else "—"
@@ -517,20 +467,14 @@ class _ReportBuilder:
             a(f"📈 <b>KPI:</b> {student.score}%")
             a(
                 f"✔️ <b>Правильных ответов:</b> "
-                f"{student.correct_answers}/{student.total_questions}"
+                f"{student.correct_answers}/20"
             )
             a(f"❌ <b>Ошибок:</b> {student.wrong_answers}")
 
-            if student.ai_score is not None:
-                a(f"🧠 <b>AI Score:</b> {student.ai_score}/10")
-            if student.ai_confidence is not None:
-                a(f"🎯 <b>AI Confidence:</b> {student.ai_confidence}%")
 
             # Breakdown по типам вопросов
             if student.question_type_breakdown:
-                a("")
                 a("📚 <b>Статистика вопросов:</b>")
-                a("")
                 for qt in student.question_type_breakdown:
                     a(f"• {qt.label}: <b>{qt.correct}/{qt.total}</b>")
 
