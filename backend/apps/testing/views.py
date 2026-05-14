@@ -167,3 +167,4 @@ def _fake_opts():
         verbose_name = 'Вопрос'
         verbose_name_plural = 'Вопросы'
     return _Opts()
+
