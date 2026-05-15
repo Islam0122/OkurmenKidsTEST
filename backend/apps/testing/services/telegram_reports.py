@@ -454,8 +454,6 @@ class _ReportBuilder:
 
             a(sep)
             a(f"{header_icon} <b>{_esc(student.student_name)}</b>{fire}")
-            a(sep)
-            a("")
 
             # Статус
             status_icon = {
