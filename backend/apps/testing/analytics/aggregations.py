@@ -1,16 +1,3 @@
-"""
-analytics/aggregations.py
-
-All heavy ORM aggregations for multi-session analytics.
-
-Design principles:
-  - Every public function issues at most 2-3 DB round-trips.
-  - Python loops are only over aggregated result sets (small), never full
-    StudentAttempt querysets.
-  - No schema changes — all FK traversal uses existing relations.
-  - N+1 queries eliminated via annotate() + values() + select_related.
-"""
-
 from __future__ import annotations
 
 import io
@@ -36,14 +23,8 @@ if TYPE_CHECKING:
 PASS_THRESHOLD = 75.0
 
 
-# ── Shared attempt queryset builder ──────────────────────────────────────────
 
 def _base_attempt_qs(filters: "MultiSessionFilters"):
-    """
-    Return a StudentAttempt queryset pre-filtered by session IDs and all
-    optional filter parameters (date range, test, session_type, status,
-    score range).  Uses select_related to avoid N+1 on session→test chain.
-    """
     from apps.testing.models import StudentAttempt, AttemptStatus
 
     qs = (
@@ -71,22 +52,11 @@ def _base_attempt_qs(filters: "MultiSessionFilters"):
     return qs
 
 
-# ── KPI aggregation across multiple sessions ──────────────────────────────────
-
 def get_multi_session_kpis(filters: "MultiSessionFilters") -> dict:
-    """
-    Aggregate KPIs across all selected sessions in 3 DB round-trips:
-      1. Session meta (titles, test names)
-      2. Attempt-level aggregations
-      3. Per-session sub-aggregation for best/worst session detection
-
-    Returns a flat dict consumed directly by the template.
-    """
     from apps.testing.models import (
         TestSession, StudentAttempt, AttemptStatus,
     )
 
-    # ── Round-trip 1: session metadata ───────────────────────────────────
     sessions = list(
         TestSession.objects
         .filter(pk__in=filters.session_ids)
@@ -99,7 +69,6 @@ def get_multi_session_kpis(filters: "MultiSessionFilters") -> dict:
     session_titles = [s["title"] or s["key"][:16] for s in sessions]
     test_titles    = sorted({s["test__title"] for s in sessions})
 
-    # ── Round-trip 2: attempt aggregations ───────────────────────────────
     base_qs = _base_attempt_qs(filters)
 
     agg = base_qs.aggregate(
@@ -128,7 +97,6 @@ def get_multi_session_kpis(filters: "MultiSessionFilters") -> dict:
         .count()
     )
 
-    # Median score — needs individual values (small result set after filter)
     finished_scores = list(
         base_qs
         .filter(status=AttemptStatus.FINISHED)
@@ -148,7 +116,6 @@ def get_multi_session_kpis(filters: "MultiSessionFilters") -> dict:
     if agg["avg_duration"]:
         avg_dur_secs = int(agg["avg_duration"].total_seconds())
 
-    # ── Round-trip 3: per-session avg for best/worst ──────────────────────
     per_session = list(
         base_qs
         .filter(status=AttemptStatus.FINISHED)
@@ -193,17 +160,8 @@ def _fmt_session_label(row: dict | None) -> str:
     return row.get("session__title") or (row.get("session__key", "")[:16] + "…")
 
 
-# ── Combined ranking across multiple sessions ─────────────────────────────────
 
 def get_multi_session_ranking(filters: "MultiSessionFilters") -> list[dict]:
-    """
-    Build a merged leaderboard.
-
-    dedup_mode="best"  → keep only the single best attempt per student
-    dedup_mode="all"   → include every attempt (grouped display in template)
-
-    Single DB query + Python-side dedup (result set is already aggregated).
-    """
     from apps.testing.models import AttemptStatus
 
     qs = (
@@ -247,13 +205,11 @@ def get_multi_session_ranking(filters: "MultiSessionFilters") -> list[dict]:
 
 
 def _dedup_best(rows: list[dict]) -> list[dict]:
-    """Keep only the best (highest score, then fastest) attempt per student."""
     seen: dict[str, dict] = {}
-    for row in rows:   # rows already sorted by -score, duration
+    for row in rows:
         name = row["student_name"]
         if name not in seen:
             seen[name] = row
-    # Re-sort after dedup (order may shift slightly due to dict insertion)
     return sorted(seen.values(), key=lambda r: (-r["score"], _td_to_secs(r["duration"]) or 0))
 
 
@@ -263,13 +219,9 @@ def _td_to_secs(td) -> float | None:
     return round(td.total_seconds(), 1)
 
 
-# ── Multi-session question breakdown ─────────────────────────────────────────
 
 def get_multi_session_question_breakdown(filters: "MultiSessionFilters") -> list[dict]:
-    """
-    Aggregate per-question correctness across all selected sessions.
-    One DB query via JOIN through attempt→session.
-    """
+
     from apps.testing.models import Answer
 
     rows = (
@@ -291,7 +243,6 @@ def get_multi_session_question_breakdown(filters: "MultiSessionFilters") -> list
         .order_by("question__order", "question__created_at")
     )
 
-    # Apply optional date filter at answer level
     if filters.date_from:
         rows = rows.filter(answered_at__date__gte=filters.date_from)
     if filters.date_to:
@@ -315,10 +266,8 @@ def get_multi_session_question_breakdown(filters: "MultiSessionFilters") -> list
     return result
 
 
-# ── Chart helpers ─────────────────────────────────────────────────────────────
 
 def get_score_buckets(filters: "MultiSessionFilters") -> list[dict]:
-    """10-point histogram over finished attempts."""
     from apps.testing.models import AttemptStatus
 
     scores = list(
@@ -335,7 +284,6 @@ def get_score_buckets(filters: "MultiSessionFilters") -> list[dict]:
 
 
 def get_score_by_session(filters: "MultiSessionFilters") -> list[dict]:
-    """Average score per session — for grouped bar chart."""
     from apps.testing.models import AttemptStatus
 
     rows = (
@@ -356,7 +304,6 @@ def get_score_by_session(filters: "MultiSessionFilters") -> list[dict]:
 
 
 def get_attempts_by_day(filters: "MultiSessionFilters") -> list[dict]:
-    """Attempts per calendar day across selected sessions."""
     rows = (
         _base_attempt_qs(filters)
         .annotate(day=TruncDate("started_at"))
@@ -367,20 +314,13 @@ def get_attempts_by_day(filters: "MultiSessionFilters") -> list[dict]:
     return [{"day": str(r["day"]), "count": r["count"]} for r in rows]
 
 
-# ── Excel export for multi-session ───────────────────────────────────────────
 
 def build_multi_excel(data: dict, filters: "MultiSessionFilters") -> bytes:
-    """
-    Build a multi-sheet .xlsx for multi-session analytics.
-    Sheets: KPI Summary | Ranking | Question Breakdown | Per-Session
-    """
     import openpyxl
-    from openpyxl.styles import Font, PatternFill, Alignment
 
     wb  = openpyxl.Workbook()
     kpis = data["kpis"]
 
-    # ── Sheet 1: KPI Summary ──────────────────────────────────────────────
     ws1 = wb.active
     ws1.title = "KPI сводка"
     _hdr(ws1, ["Метрика", "Значение"])
@@ -409,7 +349,6 @@ def build_multi_excel(data: dict, filters: "MultiSessionFilters") -> bytes:
         ws1.append(row)
     _autowidth(ws1)
 
-    # ── Sheet 2: Ranking ──────────────────────────────────────────────────
     ws2 = wb.create_sheet("Рейтинг")
     _hdr(ws2, ["Место", "Студент", "Тест", "Сессия", "Балл", "Время", "Начато", "Завершено"])
     for row in data.get("ranking", []):
@@ -425,7 +364,6 @@ def build_multi_excel(data: dict, filters: "MultiSessionFilters") -> bytes:
         ])
     _autowidth(ws2)
 
-    # ── Sheet 3: Question breakdown ───────────────────────────────────────
     ws3 = wb.create_sheet("Вопросы")
     _hdr(ws3, ["Вопрос", "Тип", "Сложность", "Всего", "Верно", "Неверно", "% верных"])
     for b in data.get("breakdown", []):
@@ -440,7 +378,6 @@ def build_multi_excel(data: dict, filters: "MultiSessionFilters") -> bytes:
         ])
     _autowidth(ws3)
 
-    # ── Sheet 4: Per-session breakdown ────────────────────────────────────
     ws4 = wb.create_sheet("По сессиям")
     _hdr(ws4, ["Сессия", "Средний балл"])
     for row in kpis.get("per_session", []):

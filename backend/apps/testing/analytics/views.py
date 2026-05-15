@@ -21,8 +21,6 @@ from .aggregations import (
 )
 
 
-# ── Shared helpers ────────────────────────────────────────────────────────────
-
 class _FakeOpts:
     """Minimal opts shim for Jazzmin breadcrumb rendering."""
     app_label           = "analytics"
@@ -38,15 +36,8 @@ def _fmt_duration(seconds: int | None) -> str:
     return f"{m}м {s}с" if m else f"{s}с"
 
 
-# ── View 1: Session list ──────────────────────────────────────────────────────
-
 @staff_member_required
 def session_list_view(request):
-    """
-    GET /admin/analytics/sessions/
-    Shows all sessions as a sortable, filterable table with checkboxes for
-    multi-session selection.
-    """
     q = request.GET.get("q", "").strip()
 
     sessions_qs = get_sessions_for_selector()
@@ -69,13 +60,9 @@ def session_list_view(request):
     return render(request, "admin/analytics/session_list.html", ctx)
 
 
-# ── View 2: Single session detail ─────────────────────────────────────────────
-
 @staff_member_required
 def session_detail_view(request, session_id: str):
-    """
-    GET /admin/analytics/sessions/<session_id>/
-    """
+
     kpis = get_session_kpis(str(session_id))
     if not kpis:
         from django.http import Http404
@@ -104,13 +91,8 @@ def session_detail_view(request, session_id: str):
     return render(request, "admin/analytics/session_detail.html", ctx)
 
 
-# ── View 3: Single session Excel export ───────────────────────────────────────
-
 @staff_member_required
 def session_export_view(request, session_id: str):
-    """
-    GET /admin/analytics/sessions/<session_id>/export/
-    """
     kpis = get_session_kpis(str(session_id))
     if not kpis:
         from django.http import Http404
@@ -129,27 +111,13 @@ def session_export_view(request, session_id: str):
     return resp
 
 
-# ── View 4: Multi-session analytics ──────────────────────────────────────────
-
 @staff_member_required
 def multi_session_analytics_view(request):
-    """
-    GET /admin/analytics/multi/?sessions=<id1>,<id2>,...
-        &date_from=YYYY-MM-DD&date_to=YYYY-MM-DD
-        &test_id=<uuid>&session_type=exam|training
-        &status=active|finished&min_score=0&max_score=100
-        &dedup=best|all        (default: best)
-
-    Aggregates statistics across all selected sessions.
-    """
     from .services import MultiSessionService, MultiSessionFilters
-
-    # ── Parse session IDs ──────────────────────────────────────────────────
     raw_ids    = request.GET.get("sessions", "").strip()
     session_ids = [s.strip() for s in raw_ids.split(",") if s.strip()]
 
     if not session_ids:
-        # Redirect to session list if nothing selected
         ctx = {
             **_admin_site.each_context(request),
             "title": "Мультисессионная аналитика",
@@ -159,7 +127,6 @@ def multi_session_analytics_view(request):
         }
         return render(request, "admin/analytics/multi_analytics.html", ctx)
 
-    # ── Build filters ──────────────────────────────────────────────────────
     filters = MultiSessionFilters(
         session_ids  = session_ids,
         date_from    = request.GET.get("date_from", "").strip() or None,
@@ -174,7 +141,6 @@ def multi_session_analytics_view(request):
 
     data = MultiSessionService.get_analytics(filters)
 
-    # Enrich ranking with formatted duration
     for row in data["ranking"]:
         row["duration_fmt"] = _fmt_duration(row.get("duration_seconds"))
 
@@ -196,13 +162,8 @@ def multi_session_analytics_view(request):
     return render(request, "admin/analytics/multi_analytics.html", ctx)
 
 
-# ── View 5: Multi-session Excel export ────────────────────────────────────────
-
 @staff_member_required
 def multi_session_export_view(request):
-    """
-    GET /admin/analytics/multi/export/?sessions=<id1>,<id2>,...&dedup=best
-    """
     from .services import MultiSessionService, MultiSessionFilters
     from .aggregations import build_multi_excel
 
@@ -237,8 +198,6 @@ def multi_session_export_view(request):
     )
     return resp
 
-
-# ── Private helpers ───────────────────────────────────────────────────────────
 
 def _safe_float(val) -> float | None:
     try:

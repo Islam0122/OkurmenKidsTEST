@@ -4,21 +4,12 @@ from rest_framework import serializers
 
 
 class ReviewOptionSerializer(serializers.Serializer):
-    """A single question option (selected or correct)."""
     id   = serializers.UUIDField()
     text = serializers.CharField()
 
 
 class MistakeSerializer(serializers.Serializer):
-    """
-    Represents one incorrect (or partially-correct) answer in the review.
 
-    For single_choice / multiple_choice:
-        selected_options + correct_options are populated.
-    For text / code:
-        student_answer + expected_answer + ai_score + ai_confidence are populated.
-    Both types carry: ai_feedback, ai_suggestion, explanation.
-    """
     question_id   = serializers.UUIDField()
     question_type = serializers.CharField()
     question      = serializers.CharField()
@@ -26,17 +17,14 @@ class MistakeSerializer(serializers.Serializer):
     is_correct    = serializers.BooleanField(allow_null=True)
     answered_at   = serializers.DateTimeField(allow_null=True)
 
-    # Choice questions
     selected_options = ReviewOptionSerializer(many=True, required=False, default=list)
     correct_options  = ReviewOptionSerializer(many=True, required=False, default=list)
 
-    # Text / code questions
     student_answer   = serializers.CharField(allow_blank=True, required=False, default="")
     expected_answer  = serializers.CharField(allow_blank=True, required=False, default="")
     ai_score         = serializers.FloatField(allow_null=True, required=False)
     ai_confidence    = serializers.FloatField(allow_null=True, required=False)
 
-    # Shared
     explanation  = serializers.CharField(allow_blank=True, required=False, default="")
     ai_feedback  = serializers.CharField(allow_blank=True, required=False, default="")
     ai_suggestion = serializers.CharField(allow_blank=True, required=False, default="")

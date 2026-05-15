@@ -1,15 +1,3 @@
-"""
-analytics/services.py
-
-Service layer for multi-session analytics.
-Orchestrates aggregations, applies caching, and returns a single
-clean data dict for the view to pass directly to the template.
-
-No database schema changes required.  All stats derive from:
-  StudentAttempt → TestSession → Test
-  Answer         → StudentAttempt
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -29,25 +17,10 @@ from .aggregations import (
 
 logger = logging.getLogger(__name__)
 
-CACHE_TTL = 60 * 3   # 3 minutes for multi-session (more volatile than single)
-
+CACHE_TTL = 60 * 3
 
 @dataclass
 class MultiSessionFilters:
-    """
-    Encapsulates all filter parameters for multi-session analytics.
-
-    session_ids  : list of TestSession UUIDs (as strings)
-    date_from    : "YYYY-MM-DD" or None
-    date_to      : "YYYY-MM-DD" or None
-    test_id      : UUID string or None  — restrict to one test
-    session_type : "exam" | "training" | None
-    status       : "active" | "finished" | "expired" | None
-    min_score    : float or None
-    max_score    : float or None
-    dedup_mode   : "best" → one attempt per student (best score)
-                   "all"  → every attempt
-    """
     session_ids  : list[str]        = field(default_factory=list)
     date_from    : str | None       = None
     date_to      : str | None       = None
@@ -60,7 +33,6 @@ class MultiSessionFilters:
 
     @property
     def cache_key(self) -> str:
-        """Stable cache key derived from all filter parameters."""
         raw = (
             ",".join(sorted(self.session_ids))
             + f"|{self.date_from}|{self.date_to}"
@@ -82,19 +54,6 @@ class MultiSessionFilters:
 
 
 class MultiSessionService:
-    """
-    Orchestrates all aggregations for the multi-session analytics dashboard.
-
-    Single public method: get_analytics(filters) → dict
-
-    Optimization notes:
-      - Uses Django ORM annotate/aggregate to push all math to PostgreSQL.
-      - select_related on session→test prevents N+1 on FK traversal.
-      - Result is cached per unique filter combination (TTL = 3 min).
-      - For very large datasets (10k+ attempts) the DB-side aggregation
-        is still fast because it operates on indexed FK columns.
-    """
-
     @staticmethod
     def get_analytics(filters: MultiSessionFilters) -> dict:
         if not filters.session_ids:
@@ -135,16 +94,10 @@ class MultiSessionService:
 
     @staticmethod
     def invalidate(session_ids: list[str]) -> None:
-        """
-        Best-effort cache invalidation when sessions are modified.
-        Since cache keys are hash-based we can't enumerate them;
-        instead we flush by prefix using wildcard if backend supports it,
-        or simply pass — TTL will expire shortly anyway.
-        """
         try:
             cache.delete_pattern("multi_analytics:*")
         except AttributeError:
-            pass   # LocMemCache / dummy don't support delete_pattern
+            pass
 
 
 def _empty_data() -> dict:
