@@ -155,7 +155,16 @@ def _compute_distribution(available_types: List[str]) -> Dict[str, int]:
         return distribution
 
     # Redistribute missing quota across available types (in canonical order).
-    available_ordered = [qt for qt in QUESTION_TYPES if qt in distribution]
+    REDISTRIBUTABLE_TYPES = [
+        "single_choice",
+        "multiple_choice",
+    ]
+
+    available_ordered = [
+        qt
+        for qt in REDISTRIBUTABLE_TYPES
+        if qt in distribution
+    ]
     base_extra, remainder = divmod(missing_quota, len(available_ordered))
 
     for idx, qtype in enumerate(available_ordered):
