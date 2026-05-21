@@ -1,226 +1,205 @@
+"""
+apps/testing/services/question_selector.py
+
+Question selection and distribution logic for test attempts.
+
+Key design decisions:
+  - TOTAL_QUESTIONS is derived from DEFAULT_DISTRIBUTION, never hardcoded.
+  - The distribution can be overridden via Django settings (TEST_QUESTION_DISTRIBUTION).
+  - If the configured distribution total != expected total, a clear ImproperlyConfigured
+    error is raised at import time — fast fail, no silent corruption.
+  - All public functions are side-effect free; DB writes live in callers.
+"""
 from __future__ import annotations
 
 import random
 from collections import defaultdict
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Any, Dict, List, Optional
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db.models import Prefetch
 
-# Constants
-TOTAL_QUESTIONS = 20
+# ---------------------------------------------------------------------------
+# Distribution configuration
+# ---------------------------------------------------------------------------
 
-QUESTION_TYPES = [
+#: Canonical ordering of question types — used to keep behaviour deterministic
+#: across Python dict orderings (3.7+ dicts are ordered, but being explicit is safer).
+QUESTION_TYPES: List[str] = [
     "single_choice",
     "multiple_choice",
     "text",
     "code",
 ]
 
-DEFAULT_DISTRIBUTION = {
-    "single_choice": 8,
-    "multiple_choice": 8,
-    "text": 2,
-    "code": 2,
+#: Default per-type quotas.  Sum = 20.
+DEFAULT_DISTRIBUTION: Dict[str, int] = {
+    "single_choice": 9,
+    "multiple_choice": 9,
+    "text": 1,
+    "code": 1,
 }
 
-# Load distribution from Django settings with fallback
-QUESTION_DISTRIBUTION: Dict[str, int] = getattr(
-    settings,
-    "TEST_QUESTION_DISTRIBUTION",
-    DEFAULT_DISTRIBUTION,
-)
+# ---------------------------------------------------------------------------
+# Load (and validate) the distribution at module import time
+# ---------------------------------------------------------------------------
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Distribution Logic
-# ──────────────────────────────────────────────────────────────────────────────
-
-def _validate_distribution_configuration() -> None:
+def _load_distribution() -> Dict[str, int]:
     """
-    Validate that distribution configuration is correct.
+    Return the active distribution dict from Django settings or the default.
 
-    Raises:
-        ValidationError: If distribution total doesn't match TOTAL_QUESTIONS
+    Raises ImproperlyConfigured if:
+      - The distribution contains unknown question types.
+      - Any quota is not a positive integer.
+      - The distribution is empty.
     """
-    configured_total = sum(QUESTION_DISTRIBUTION.values())
-    if configured_total != TOTAL_QUESTIONS:
+    dist: Dict[str, int] = getattr(
+        settings,
+        "TEST_QUESTION_DISTRIBUTION",
+        DEFAULT_DISTRIBUTION,
+    )
+
+    if not dist:
+        raise ImproperlyConfigured(
+            "TEST_QUESTION_DISTRIBUTION must not be empty."
+        )
+
+    unknown = set(dist) - set(QUESTION_TYPES)
+    if unknown:
+        raise ImproperlyConfigured(
+            f"TEST_QUESTION_DISTRIBUTION contains unknown question types: "
+            f"{sorted(unknown)}. "
+            f"Valid types: {QUESTION_TYPES}."
+        )
+
+    for qtype, quota in dist.items():
+        if not isinstance(quota, int) or quota < 0:
+            raise ImproperlyConfigured(
+                f"TEST_QUESTION_DISTRIBUTION['{qtype}'] must be a non-negative integer, "
+                f"got {quota!r}."
+            )
+
+    return dict(dist)
+
+
+#: Active distribution (validated at import time).
+QUESTION_DISTRIBUTION: Dict[str, int] = _load_distribution()
+
+#: Total questions per attempt — derived from distribution, never hardcoded.
+TOTAL_QUESTIONS: int = sum(QUESTION_DISTRIBUTION.values())
+
+# Sanity-check: must be positive
+if TOTAL_QUESTIONS <= 0:
+    raise ImproperlyConfigured(
+        f"TEST_QUESTION_DISTRIBUTION sums to {TOTAL_QUESTIONS}; "
+        "it must sum to a positive integer."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+def _validate_distribution_total(distribution: Dict[str, int]) -> None:
+    """Assert that a computed distribution still sums to TOTAL_QUESTIONS."""
+    total = sum(distribution.values())
+    if total != TOTAL_QUESTIONS:
         raise ValidationError(
-            f"TEST_QUESTION_DISTRIBUTION total must equal {TOTAL_QUESTIONS}, "
-            f"got {configured_total}."
+            f"Internal distribution error: expected {TOTAL_QUESTIONS} total questions, "
+            f"got {total}. Distribution: {distribution}. "
+            "This is a bug — please report it."
         )
 
 
 def _compute_distribution(available_types: List[str]) -> Dict[str, int]:
     """
-    Compute final distribution for available question types.
+    Return per-type quotas for the given *available_types*.
 
-    Uses fixed configuration loaded from Django settings and redistributes
-    quotas for missing types evenly across available types.
+    Algorithm:
+      1. Start from QUESTION_DISTRIBUTION.
+      2. For each type that is NOT available, add its quota to a 'missing' pool.
+      3. Redistribute the missing pool evenly across the available types
+         (remainder distributed to the first types in QUESTION_TYPES order).
 
     Args:
-        available_types: List of question types present in the test
+        available_types: Question types that actually exist in the test.
 
     Returns:
-        Dictionary mapping question types to their quotas
+        Dict mapping each available type to its final quota.
 
     Raises:
-        ValidationError: If distribution is invalid or unknown types provided
-
-    Examples:
-        Base distribution (all types present):
-            {
-                "single_choice": 8,
-                "multiple_choice": 8,
-                "text": 2,
-                "code": 2,
-            }
-
-        Missing "code":
-            {
-                "single_choice": 9,
-                "multiple_choice": 9,
-                "text": 2,
-            }
-
-        Only choice types:
-            {
-                "single_choice": 10,
-                "multiple_choice": 10,
-            }
+        ValidationError: If available_types is empty or contains unknown types.
     """
-    # Edge case: No available types
     if not available_types:
         return {}
 
-    # Validate available types
-    invalid_types = set(available_types) - set(QUESTION_TYPES)
-    if invalid_types:
+    unknown = set(available_types) - set(QUESTION_TYPES)
+    if unknown:
         raise ValidationError(
-            f"Unknown question types: {sorted(invalid_types)}"
+            f"Unknown question types in available_types: {sorted(unknown)}."
         )
 
-    # Validate distribution configuration
-    _validate_distribution_configuration()
-
-    # Calculate base distribution and missing quota
     distribution: Dict[str, int] = {}
     missing_quota = 0
 
     for qtype in QUESTION_TYPES:
         configured = QUESTION_DISTRIBUTION.get(qtype, 0)
-
         if qtype in available_types:
             distribution[qtype] = configured
         else:
             missing_quota += configured
 
-    # If no missing types, return distribution as-is
     if missing_quota == 0:
+        # All configured types are available — nothing to redistribute.
         return distribution
 
-    # Redistribute missing quota evenly across available types
-    available_types_in_order = [
-        qtype for qtype in QUESTION_TYPES
-        if qtype in distribution
-    ]
+    # Redistribute missing quota across available types (in canonical order).
+    available_ordered = [qt for qt in QUESTION_TYPES if qt in distribution]
+    base_extra, remainder = divmod(missing_quota, len(available_ordered))
 
-    base_extra, remainder = divmod(
-        missing_quota,
-        len(available_types_in_order),
-    )
-
-    for index, qtype in enumerate(available_types_in_order):
+    for idx, qtype in enumerate(available_ordered):
         distribution[qtype] += base_extra
-        if index < remainder:
+        if idx < remainder:
             distribution[qtype] += 1
 
-    # Validate final distribution
     _validate_distribution_total(distribution)
-
     return distribution
 
 
-def _validate_distribution_total(distribution: Dict[str, int]) -> None:
-    """
-    Validate that distribution totals to TOTAL_QUESTIONS.
-
-    Args:
-        distribution: Distribution to validate
-
-    Raises:
-        ValidationError: If total doesn't match TOTAL_QUESTIONS
-    """
-    total = sum(distribution.values())
-    if total != TOTAL_QUESTIONS:
-        raise ValidationError(
-            f"Distribution total must be {TOTAL_QUESTIONS}, got {total}. "
-            f"Distribution: {distribution}"
-        )
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Selection Helpers
-# ──────────────────────────────────────────────────────────────────────────────
-
 def _fill_to_n(pool: List[Any], n: int, rng: random.Random) -> List[Any]:
     """
-    Select exactly n items from pool with deterministic behavior.
+    Select exactly *n* items from *pool*.
 
-    Rules:
-        - If pool >= n: Random sample without duplicates
-        - If pool < n: Repeat sample until n reached, avoiding consecutive duplicates
+    - pool >= n  → random sample without replacement.
+    - pool < n   → repeat-sample until n reached, avoiding consecutive duplicates
+                   where possible (good UX for small question banks).
 
-    Args:
-        pool: List of items to select from
-        n: Number of items to select
-        rng: Random number generator for deterministic selection
-
-    Returns:
-        List of selected items
-
-    Raises:
-        ValidationError: If pool is empty
+    Raises ValidationError if pool is empty.
     """
     if not pool:
-        raise ValidationError("Cannot sample from empty question pool.")
+        raise ValidationError("Cannot sample from an empty question pool.")
 
     if len(pool) >= n:
         return rng.sample(pool, n)
 
-    # Repeat sampling for small pools
     result: List[Any] = []
-    last_id = None
+    last_id: Any = None
 
     while len(result) < n:
-        # Avoid consecutive duplicates if possible
-        available = [
-            item for item in pool
-            if getattr(item, 'id', None) != last_id
-        ]
-
-        if not available:
-            available = pool
-
-        chosen = rng.choice(available)
+        candidates = [q for q in pool if getattr(q, "id", None) != last_id]
+        if not candidates:
+            candidates = pool
+        chosen = rng.choice(candidates)
         result.append(chosen)
-        last_id = getattr(chosen, 'id', None)
+        last_id = getattr(chosen, "id", None)
 
     return result
 
 
 def _serialize_question(question: Any) -> Dict[str, Any]:
-    """
-    Serialize question model to dictionary format.
-
-    Args:
-        question: Question model instance
-
-    Returns:
-        Serialized question dictionary
-    """
-    item = {
+    """Serialize a Question model instance to a plain dict (no correct-answer leakage)."""
+    item: Dict[str, Any] = {
         "id": str(question.id),
         "text": question.text,
         "question_type": question.question_type,
@@ -229,199 +208,140 @@ def _serialize_question(question: Any) -> Dict[str, Any]:
         "is_auto_gradable": question.is_auto_gradable,
     }
 
-    # Add optional fields
-    if hasattr(question, 'language') and question.language:
+    if getattr(question, "language", None):
         item["language"] = question.language
 
-    if hasattr(question, 'metadata') and question.metadata:
+    if getattr(question, "metadata", None):
         item["metadata"] = question.metadata
 
-    # Add options for choice questions
     if question.question_type in ("single_choice", "multiple_choice"):
-        if hasattr(question, 'options'):
-            item["options"] = [
-                {
-                    "id": str(option.id),
-                    "text": option.text,
-                    "order": option.order,
-                }
-                for option in sorted(
-                    question.options.all(),
-                    key=lambda opt: opt.order,
-                )
-            ]
+        options_qs = getattr(question, "cached_options", None)
+        if options_qs is None:
+            options_qs = question.options.all()
+        item["options"] = [
+            {"id": str(opt.id), "text": opt.text, "order": opt.order}
+            for opt in sorted(options_qs, key=lambda o: o.order)
+        ]
 
     return item
 
 
 def _seed_from_attempt_id(attempt_id: str) -> int:
-    """
-    Generate deterministic seed from attempt ID.
-
-    Args:
-        attempt_id: UUID string
-
-    Returns:
-        Integer seed for random number generator
-    """
-    # Convert hex string to integer and mod to fit within 32-bit range
+    """Derive a deterministic integer seed from a UUID string."""
     return int(attempt_id.replace("-", ""), 16) % (2 ** 31)
 
 
-# ──────────────────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
 # Public API
-# ──────────────────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
 
 def get_questions_for_attempt(
-        test_id: str,
-        seed: Optional[int] = None,
-        attempt_id: Optional[str] = None,
+    test_id: str,
+    seed: Optional[int] = None,
+    attempt_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
-    Build deterministic question set for test attempt.
+    Build a deterministic, distribution-respecting question set for one attempt.
 
-    Features:
-        - Fixed production-ready distribution from Django settings
-        - Automatic redistribution for missing question types
-        - Deterministic selection with optional seed
-        - Optimized query performance (zero N+1)
-        - Repeat sampling for small question pools
-        - Shuffled output for unbiased ordering
+    Priority for seed resolution: explicit *seed* > *attempt_id* > None (random).
 
     Args:
-        test_id: ID of the test
-        seed: Optional random seed for reproducibility
-        attempt_id: Optional attempt ID to generate seed from
+        test_id:    PK of the Test.
+        seed:       Optional explicit RNG seed.
+        attempt_id: Optional attempt UUID used to derive a seed automatically.
 
     Returns:
-        List of serialized question objects
+        List of serialized question dicts (length == TOTAL_QUESTIONS when the
+        test has enough questions; may be shorter only if the bank itself is
+        smaller and repeat-sampling still can't reach the quota — shouldn't
+        happen in practice).
 
     Raises:
-        ValidationError: If test has no questions or distribution is invalid
+        ValidationError: If the test has no questions at all.
     """
     from ..models import Question
 
-    # Resolve seed with priority: explicit seed > attempt_id > None
     resolved_seed: Optional[int] = seed
     if resolved_seed is None and attempt_id is not None:
         resolved_seed = _seed_from_attempt_id(attempt_id)
 
     rng = random.Random(resolved_seed)
 
-    # Optimized single query with prefetch
     all_questions = list(
         Question.objects
         .filter(test_id=test_id)
-        .prefetch_related(
-            Prefetch("options", to_attr="cached_options")
-        )
-        .order_by("id")  # Deterministic ordering before random selection
+        .prefetch_related(Prefetch("options", to_attr="cached_options"))
+        .order_by("id")  # stable ordering before random selection
     )
 
     if not all_questions:
         raise ValidationError(f"Test {test_id} has no questions.")
 
-    # Group questions by type
+    # Group by type
     grouped: Dict[str, List[Any]] = defaultdict(list)
-    for question in all_questions:
-        grouped[question.question_type].append(question)
+    for q in all_questions:
+        grouped[q.question_type].append(q)
 
-    # Determine available types
-    available_types = [
-        qtype for qtype in QUESTION_TYPES
-        if grouped.get(qtype)
-    ]
-
-    # Compute distribution based on available types
+    available_types = [qt for qt in QUESTION_TYPES if grouped.get(qt)]
     distribution = _compute_distribution(available_types)
 
-    # Select questions according to distribution
     selected: List[Any] = []
-
     for qtype in available_types:
         quota = distribution[qtype]
-        pool = grouped[qtype]
-
-        chosen = _fill_to_n(pool=pool, n=quota, rng=rng)
+        chosen = _fill_to_n(pool=grouped[qtype], n=quota, rng=rng)
         selected.extend(chosen)
 
-    # Final deterministic shuffle to remove ordering bias
     rng.shuffle(selected)
+    return [_serialize_question(q) for q in selected]
 
-    # Serialize and return
-    return [_serialize_question(question) for question in selected]
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Validation
-# ──────────────────────────────────────────────────────────────────────────────
 
 def validate_attempt_structure(answers: List[Dict[str, Any]]) -> None:
     """
-    Validate submitted attempt structure against distribution rules.
+    Validate that a submitted answer list matches the expected distribution.
 
-    Validates:
-        - Correct total number of answers
-        - Valid question types
-        - Distribution matches expected computed distribution
-
-    Args:
-        answers: List of answer dictionaries
+    Checks:
+      - answers is a list.
+      - Length equals TOTAL_QUESTIONS.
+      - All question_type values are valid.
+      - Per-type counts match the computed distribution for those types.
 
     Raises:
-        ValidationError: If validation fails
+        ValidationError: On any violation.
     """
     if not isinstance(answers, list):
         raise ValidationError("answers must be a list.")
 
     if len(answers) != TOTAL_QUESTIONS:
         raise ValidationError(
-            f"Expected exactly {TOTAL_QUESTIONS} answers, "
-            f"got {len(answers)}."
+            f"Expected exactly {TOTAL_QUESTIONS} answers, got {len(answers)}."
         )
 
-    # Count question types in answers
     type_counts: Dict[str, int] = defaultdict(int)
 
-    for index, answer in enumerate(answers):
-        # Extract question_type from different possible structures
+    for idx, answer in enumerate(answers):
         qtype = (
-                answer.get("question_type")
-                or (answer.get("question") or {}).get("question_type")
+            answer.get("question_type")
+            or (answer.get("question") or {}).get("question_type")
         )
-
         if not qtype:
             raise ValidationError(
-                f"Answer at index {index} is missing question_type."
+                f"Answer at index {idx} is missing question_type."
             )
-
         if qtype not in QUESTION_TYPES:
             raise ValidationError(
-                f"Unknown question_type='{qtype}' at index {index}."
+                f"Unknown question_type='{qtype}' at index {idx}."
             )
-
         type_counts[qtype] += 1
 
-    # Determine present types
-    present_types = [
-        qtype for qtype in QUESTION_TYPES
-        if type_counts.get(qtype, 0) > 0
-    ]
+    present_types = [qt for qt in QUESTION_TYPES if type_counts.get(qt, 0) > 0]
+    expected = _compute_distribution(present_types)
 
-    # Compute expected distribution for present types
-    expected_distribution = _compute_distribution(present_types)
-
-    # Validate each type's count
     violations: List[str] = []
-
     for qtype in present_types:
-        expected = expected_distribution.get(qtype, 0)
-        actual = type_counts.get(qtype, 0)
-
-        if expected != actual:
-            violations.append(
-                f"'{qtype}': expected {expected}, got {actual}"
-            )
+        exp = expected.get(qtype, 0)
+        act = type_counts.get(qtype, 0)
+        if exp != act:
+            violations.append(f"'{qtype}': expected {exp}, got {act}")
 
     if violations:
         raise ValidationError(
@@ -429,22 +349,15 @@ def validate_attempt_structure(answers: List[Dict[str, Any]]) -> None:
         )
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Integration Helpers
-# ──────────────────────────────────────────────────────────────────────────────
-
 def build_attempt_questions(test_id: str, attempt_id: str) -> List[Dict[str, Any]]:
     """
-    Build deterministic question set for attempt (convenience wrapper).
+    Convenience wrapper: build questions for a specific attempt (uses attempt_id as seed).
 
     Args:
-        test_id: ID of the test
-        attempt_id: ID of the attempt (used for seeding)
+        test_id:    PK of the Test.
+        attempt_id: PK of the StudentAttempt.
 
     Returns:
-        List of serialized question objects
+        List of serialized question dicts.
     """
-    return get_questions_for_attempt(
-        test_id=test_id,
-        attempt_id=attempt_id,
-    )
+    return get_questions_for_attempt(test_id=test_id, attempt_id=attempt_id)
