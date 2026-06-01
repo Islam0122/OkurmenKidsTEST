@@ -96,10 +96,6 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-LOGIN_URL = '/admin-panel/login/'
-LOGIN_REDIRECT_URL = '/admin-panel/'
-LOGOUT_REDIRECT_URL = '/admin-panel/login/'
-
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
@@ -217,8 +213,22 @@ JAZZMIN_SETTINGS = {
                 "icon":        "fas fa-chart-pie",
                 "permissions": ["auth.change_user"],
             },
+{
+    "name": "Ручная проверка",
+    "url": "/admin/testing/manual-review/",
+    "icon": "fas fa-tasks",
+    "permissions": ["auth.change_user"],
+},
+{
+    "name": "Dashboard проверки",
+    "url": "/admin/testing/review-dashboard/",
+    "icon": "fas fa-clipboard-check",
+    "permissions": ["auth.change_user"],
+},
         ],
     },
+
+
 
 
 

@@ -1,0 +1,272 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Дашборд преподавателя — {{ block.super }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+:root {
+  --rd-navy:   #1f4e79;
+  --rd-blue:   #2563eb;
+  --rd-green:  #059669;
+  --rd-red:    #dc2626;
+  --rd-amber:  #d97706;
+  --rd-purple: #7c3aed;
+  --rd-border: #e2e8f0;
+  --rd-bg:     #f8fafc;
+  --rd-white:  #ffffff;
+  --rd-muted:  #64748b;
+  --radius:    14px;
+  --shadow:    0 2px 12px rgba(0,0,0,.07);
+}
+.rd-page { font-family: inherit; }
+.rd-toolbar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: var(--rd-white); border: 1px solid var(--rd-border);
+  border-radius: var(--radius); padding: 14px 20px; margin-bottom: 24px;
+  box-shadow: var(--shadow);
+}
+.rd-toolbar-title {
+  font-size: 20px; font-weight: 800; color: var(--rd-navy);
+  display: flex; align-items: center; gap: 8px; margin-right: auto;
+}
+.rd-action-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 20px; border-radius: 9px; font-size: 13px; font-weight: 700;
+  text-decoration: none; color: #fff; transition: filter .15s, transform .12s;
+}
+.rd-action-btn:hover { filter: brightness(1.1); transform: translateY(-1px); color: #fff; text-decoration: none; }
+.rd-btn-red    { background: linear-gradient(135deg,#ef4444,#dc2626); }
+.rd-btn-blue   { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+.rd-btn-green  { background: linear-gradient(135deg,#10b981,#059669); }
+
+/* Stat cards */
+.rd-cards { display: grid; grid-template-columns: repeat(auto-fill,minmax(200px,1fr)); gap: 16px; margin-bottom: 32px; }
+.rd-card {
+  background: var(--rd-white); border: 1px solid var(--rd-border);
+  border-radius: var(--radius); padding: 22px 20px; box-shadow: var(--shadow);
+  position: relative; overflow: hidden;
+  transition: transform .15s, box-shadow .15s;
+}
+.rd-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: var(--acc, var(--rd-blue));
+}
+.rd-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.1); }
+.rd-card-icon {
+  width: 42px; height: 42px; border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; margin-bottom: 14px;
+  background: var(--acc-lt, #dbeafe); color: var(--acc, var(--rd-blue));
+}
+.rd-card-num { font-size: 36px; font-weight: 900; line-height: 1; color: var(--rd-navy); }
+.rd-card-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--rd-muted); margin-top: 6px; }
+.rd-card-sub { font-size: 12px; color: var(--rd-muted); margin-top: 4px; }
+.rd-card-action { margin-top: 12px; }
+.rd-card-action a { font-size: 12px; color: var(--acc,var(--rd-blue)); font-weight: 600; text-decoration: none; }
+.rd-card-action a:hover { text-decoration: underline; }
+
+.a-red    { --acc: var(--rd-red);    --acc-lt: #fee2e2; }
+.a-green  { --acc: var(--rd-green);  --acc-lt: #d1fae5; }
+.a-amber  { --acc: var(--rd-amber);  --acc-lt: #fef3c7; }
+.a-blue   { --acc: var(--rd-blue);   --acc-lt: #dbeafe; }
+.a-purple { --acc: var(--rd-purple); --acc-lt: #ede9fe; }
+
+/* Urgent banner */
+.rd-urgent {
+  background: linear-gradient(135deg,#fef2f2,#fff5f5);
+  border: 2px solid #fca5a5; border-radius: var(--radius);
+  padding: 16px 22px; margin-bottom: 24px;
+  display: flex; align-items: center; gap: 14px;
+}
+.rd-urgent-icon { font-size: 28px; flex-shrink: 0; }
+.rd-urgent-text h3 { margin: 0 0 4px; font-size: 15px; font-weight: 800; color: #991b1b; }
+.rd-urgent-text p  { margin: 0; font-size: 13px; color: #b91c1c; }
+.rd-urgent-action { margin-left: auto; }
+
+/* Section title */
+.rd-section { font-size: 15px; font-weight: 700; color: var(--rd-navy); margin: 28px 0 14px; padding-bottom: 8px; border-bottom: 2px solid var(--rd-border); display: flex; align-items: center; gap: 8px; }
+
+/* Table */
+.rd-table-wrap { background: var(--rd-white); border: 1px solid var(--rd-border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+.rd-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rd-table thead th { background: var(--rd-navy); color: #fff; padding: 11px 14px; text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
+.rd-table tbody td { padding: 11px 14px; border-bottom: 1px solid var(--rd-border); vertical-align: middle; }
+.rd-table tbody tr:last-child td { border-bottom: none; }
+.rd-table tbody tr:hover td { background: var(--rd-bg); }
+.rd-badge { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+.rd-badge-pending { background: #fee2e2; color: #991b1b; }
+.rd-badge-manual  { background: #fef3c7; color: #92400e; }
+.rd-badge-done    { background: #d1fae5; color: #065f46; }
+.rd-empty { text-align: center; padding: 40px; color: var(--rd-muted); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rd-page">
+
+<div class="rd-toolbar">
+  <div class="rd-toolbar-title">
+    <i class="fas fa-chalkboard-teacher" style="color:var(--rd-blue);"></i>
+    Дашборд преподавателя
+  </div>
+  <a href="{% url 'admin:testing_manual_review_list' %}" class="rd-action-btn rd-btn-red">
+    <i class="fas fa-clipboard-check"></i> Открыть ручную проверку
+  </a>
+  <a href="{% url 'admin:testing_kpi_dashboard' %}" class="rd-action-btn rd-btn-blue">
+    <i class="fas fa-chart-pie"></i> KPI Dashboard
+  </a>
+</div>
+
+{% if pending_count > 0 %}
+<div class="rd-urgent">
+  <div class="rd-urgent-icon">🔴</div>
+  <div class="rd-urgent-text">
+    <h3>Ожидают проверки: {{ pending_count }}</h3>
+    <p>Есть ответы студентов, требующие ручной проверки. Проверьте как можно скорее.</p>
+  </div>
+  <div class="rd-urgent-action">
+    <a href="{% url 'admin:testing_manual_review_list' %}?status=pending" class="rd-action-btn rd-btn-red">
+      <i class="fas fa-arrow-right"></i> Проверить сейчас
+    </a>
+  </div>
+</div>
+{% endif %}
+
+<!-- Stat Cards -->
+<div class="rd-cards">
+
+  <div class="rd-card a-red">
+    <div class="rd-card-icon"><i class="fas fa-clock"></i></div>
+    <div class="rd-card-num">{{ pending_count }}</div>
+    <div class="rd-card-label">Ожидают проверки</div>
+    <div class="rd-card-sub">Текст и код-вопросы</div>
+    <div class="rd-card-action">
+      <a href="{% url 'admin:testing_manual_review_list' %}?status=pending">→ Проверить</a>
+    </div>
+  </div>
+
+  <div class="rd-card a-green">
+    <div class="rd-card-icon"><i class="fas fa-check-circle"></i></div>
+    <div class="rd-card-num">{{ reviewed_today }}</div>
+    <div class="rd-card-label">Проверено сегодня</div>
+    <div class="rd-card-sub">Вручную за {{ now|date:"d.m.Y" }}</div>
+    <div class="rd-card-action">
+      <a href="{% url 'admin:testing_manual_review_list' %}?status=manual">→ История</a>
+    </div>
+  </div>
+
+  <div class="rd-card a-amber">
+    <div class="rd-card-icon"><i class="fas fa-stopwatch"></i></div>
+    <div class="rd-card-num">—</div>
+    <div class="rd-card-label">Среднее время проверки</div>
+    <div class="rd-card-sub">Данные недоступны</div>
+  </div>
+
+  <div class="rd-card a-blue">
+    <div class="rd-card-icon"><i class="fas fa-graduation-cap"></i></div>
+    <div class="rd-card-num">{{ active_exams }}</div>
+    <div class="rd-card-label">Активных экзаменов</div>
+    <div class="rd-card-sub">Прямо сейчас</div>
+    <div class="rd-card-action">
+      <a href="{% url 'admin:testing_testsession_changelist' %}?is_active__exact=1">→ Сессии</a>
+    </div>
+  </div>
+
+  <div class="rd-card a-purple">
+    <div class="rd-card-icon"><i class="fas fa-users"></i></div>
+    <div class="rd-card-num">{{ students_online }}</div>
+    <div class="rd-card-label">Студентов на тестах</div>
+    <div class="rd-card-sub">Активные попытки</div>
+    <div class="rd-card-action">
+      <a href="{% url 'admin:testing_studentattempt_changelist' %}?status=active">→ Попытки</a>
+    </div>
+  </div>
+
+</div>
+
+<!-- Pending by test -->
+{% if pending_by_test %}
+<div class="rd-section">
+  <i class="fas fa-list" style="color:var(--rd-red);"></i>
+  Ожидают проверки по тестам
+</div>
+<div class="rd-table-wrap">
+  <table class="rd-table">
+    <thead>
+      <tr>
+        <th>Тест</th>
+        <th style="text-align:right;">Ответов ожидает</th>
+        <th>Действие</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in pending_by_test %}
+      <tr>
+        <td><strong>{{ item.attempt__session__test__title }}</strong></td>
+        <td style="text-align:right;">
+          <span class="rd-badge rd-badge-pending">{{ item.cnt }}</span>
+        </td>
+        <td>
+          <a href="{% url 'admin:testing_manual_review_list' %}?status=pending&q={{ item.attempt__session__test__title }}">
+            Проверить →
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- Recently graded -->
+<div class="rd-section">
+  <i class="fas fa-history" style="color:var(--rd-green);"></i>
+  Последние проверенные вручную (20)
+</div>
+<div class="rd-table-wrap">
+  {% if recent_graded %}
+  <table class="rd-table">
+    <thead>
+      <tr>
+        <th>Студент</th>
+        <th>Тест</th>
+        <th>Вопрос</th>
+        <th>Результат</th>
+        <th>Дата ответа</th>
+        <th>Действие</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ans in recent_graded %}
+      <tr>
+        <td><strong>{{ ans.attempt.student_name }}</strong></td>
+        <td>{{ ans.attempt.session.test.title }}</td>
+        <td>{{ ans.question.text|truncatechars:50 }}</td>
+        <td>
+          {% if ans.is_correct %}
+            <span class="rd-badge" style="background:#d1fae5;color:#065f46;">✓ Верно</span>
+          {% else %}
+            <span class="rd-badge" style="background:#fee2e2;color:#991b1b;">✗ Неверно</span>
+          {% endif %}
+        </td>
+        <td style="font-size:12px;color:var(--rd-muted);">{{ ans.answered_at|date:"d.m.Y H:i" }}</td>
+        <td>
+          <a href="{% url 'admin:testing_manual_review_detail' ans.pk %}">Открыть</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="rd-empty">
+    <i class="fas fa-inbox" style="font-size:32px;opacity:.2;display:block;margin-bottom:8px;"></i>
+    Проверенных ответов пока нет
+  </div>
+  {% endif %}
+</div>
+
+<div style="height:40px;"></div>
+</div>
+{% endblock %}

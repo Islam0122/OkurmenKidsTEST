@@ -1,0 +1,369 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Ручная проверка — {{ block.super }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+:root {
+  --rl-navy:  #1f4e79; --rl-blue: #2563eb; --rl-green: #059669;
+  --rl-red:   #dc2626; --rl-amber: #d97706; --rl-purple: #7c3aed;
+  --rl-border: #e2e8f0; --rl-bg: #f8fafc; --rl-white: #ffffff;
+  --rl-muted: #64748b; --radius: 12px; --shadow: 0 2px 12px rgba(0,0,0,.07);
+}
+/* ── Toolbar ──────────────────────────────────────────────────────────────── */
+.rl-toolbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--rl-white); border: 1px solid var(--rl-border);
+  border-radius: var(--radius); padding: 12px 18px; margin-bottom: 16px; box-shadow: var(--shadow);
+}
+.rl-toolbar-title { font-size: 18px; font-weight: 800; color: var(--rl-navy); display: flex; align-items: center; gap: 8px; margin-right: auto; }
+.rl-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; color: #fff; transition: filter .15s, transform .12s; white-space: nowrap; }
+.rl-btn:hover { filter: brightness(1.1); transform: translateY(-1px); color: #fff; text-decoration: none; }
+.rl-btn-red    { background: linear-gradient(135deg,#ef4444,#dc2626); }
+.rl-btn-blue   { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+.rl-btn-gray   { background: #64748b; }
+
+/* ── Status pills ──────────────────────────────────────────────────────────── */
+.rl-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.rl-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
+  text-decoration: none; border: 2px solid transparent; transition: all .15s;
+}
+.rl-pill:hover { text-decoration: none; filter: brightness(1.05); }
+.rl-pill-pending { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+.rl-pill-manual  { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.rl-pill-done    { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.rl-pill-failed  { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
+.rl-pill-all     { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+.rl-pill.active  { box-shadow: 0 0 0 2px rgba(0,0,0,.18); }
+
+/* ── Search ───────────────────────────────────────────────────────────────── */
+.rl-search-form { display: flex; gap: 8px; margin-bottom: 14px; }
+.rl-search-input {
+  flex: 1; max-width: 380px; padding: 9px 14px;
+  border: 1.5px solid var(--rl-border); border-radius: 8px;
+  font-size: 13px; color: var(--rl-navy); background: var(--rl-white);
+  transition: border-color .15s;
+}
+.rl-search-input:focus { outline: none; border-color: var(--rl-blue); }
+.rl-search-btn { padding: 9px 20px; background: var(--rl-blue); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.rl-type-select { padding: 9px 12px; border: 1.5px solid var(--rl-border); border-radius: 8px; font-size: 13px; background: var(--rl-white); }
+
+/* ── Table ────────────────────────────────────────────────────────────────── */
+.rl-table-wrap { background: var(--rl-white); border: 1px solid var(--rl-border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+.rl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rl-table thead th { background: var(--rl-navy); color: #fff; padding: 11px 12px; text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
+.rl-table thead th.cb { width: 38px; text-align: center; }
+.rl-table tbody td { padding: 11px 12px; border-bottom: 1px solid var(--rl-border); vertical-align: middle; }
+.rl-table tbody tr:last-child td { border-bottom: none; }
+.rl-table tbody tr:hover td { background: var(--rl-bg); }
+.rl-table tbody tr.selected td { background: #eff6ff; }
+
+/* badge */
+.badge { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+.b-text   { background: #fef3c7; color: #92400e; }
+.b-code   { background: #fee2e2; color: #991b1b; }
+
+/* answer preview */
+.ans-preview { font-family: 'Courier New', monospace; font-size: 12px; color: #374151; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ans-preview.code { background: #f1f5f9; border-radius: 4px; padding: 2px 6px; }
+
+/* quick grade buttons */
+.qg-btns { display: flex; gap: 5px; }
+.qg-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 12px; border-radius: 7px; font-size: 12px; font-weight: 700;
+  border: none; cursor: pointer; text-decoration: none; color: #fff; white-space: nowrap;
+  transition: filter .12s;
+}
+.qg-btn:hover { filter: brightness(1.1); }
+.qg-btn-ok  { background: #059669; }
+.qg-btn-no  { background: #dc2626; }
+.qg-btn-detail { background: #2563eb; }
+.qg-btn-done { background: #6b7280; cursor: default; }
+
+/* bulk bar */
+.rl-bulk-bar {
+  display: none; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--rl-white); border: 2px solid var(--rl-blue);
+  border-radius: var(--radius); padding: 10px 16px; margin-bottom: 12px; box-shadow: var(--shadow);
+}
+.rl-bulk-bar.visible { display: flex; }
+.rl-bulk-count { font-size: 13px; font-weight: 700; color: var(--rl-navy); margin-right: auto; }
+.rl-bulk-form { display: flex; gap: 6px; }
+
+/* empty */
+.rl-empty { text-align: center; padding: 60px; color: var(--rl-muted); }
+.rl-empty i { font-size: 40px; opacity: .2; display: block; margin-bottom: 12px; }
+
+/* toast */
+#rl-toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+  background: #1f4e79; color: #fff; padding: 12px 22px;
+  border-radius: 10px; font-size: 13px; font-weight: 700;
+  box-shadow: 0 4px 20px rgba(0,0,0,.25);
+  transform: translateY(60px); opacity: 0;
+  transition: transform .3s, opacity .3s;
+}
+#rl-toast.show { transform: translateY(0); opacity: 1; }
+#rl-toast.ok   { background: #059669; }
+#rl-toast.err  { background: #dc2626; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="rl-toast"></div>
+
+<div class="rl-toolbar">
+  <div class="rl-toolbar-title">
+    <i class="fas fa-clipboard-check" style="color:var(--rl-red);"></i>
+    Ручная проверка
+  </div>
+  <a href="{% url 'admin:testing_review_dashboard' %}" class="rl-btn rl-btn-blue">
+    <i class="fas fa-tachometer-alt"></i> Дашборд
+  </a>
+</div>
+
+<!-- Status pills -->
+<div class="rl-pills">
+  <a href="?status=pending&type={{ filter_type }}&q={{ search_q }}"
+     class="rl-pill rl-pill-pending {% if filter_status == 'pending' %}active{% endif %}">
+    🔴 Ожидают ({{ counts.pending }})
+  </a>
+  <a href="?status=manual&type={{ filter_type }}&q={{ search_q }}"
+     class="rl-pill rl-pill-manual {% if filter_status == 'manual' %}active{% endif %}">
+    🟠 Вручную ({{ counts.manual }})
+  </a>
+  <a href="?status=done&type={{ filter_type }}&q={{ search_q }}"
+     class="rl-pill rl-pill-done {% if filter_status == 'done' %}active{% endif %}">
+    🟢 AI готово ({{ counts.done }})
+  </a>
+  <a href="?status=failed&type={{ filter_type }}&q={{ search_q }}"
+     class="rl-pill rl-pill-failed {% if filter_status == 'failed' %}active{% endif %}">
+    ⚫ Ошибка ({{ counts.failed }})
+  </a>
+  <a href="?status=&type={{ filter_type }}&q={{ search_q }}"
+     class="rl-pill rl-pill-all {% if filter_status == '' %}active{% endif %}">
+    Все
+  </a>
+</div>
+
+<!-- Search + type filter -->
+<form method="get" class="rl-search-form">
+  <input type="hidden" name="status" value="{{ filter_status }}">
+  <input type="text" name="q" class="rl-search-input"
+         placeholder="Студент, вопрос, тест…" value="{{ search_q }}">
+  <select name="type" class="rl-type-select" onchange="this.form.submit()">
+    <option value="">Все типы</option>
+    <option value="text"  {% if filter_type == 'text'  %}selected{% endif %}>Текстовые</option>
+    <option value="code"  {% if filter_type == 'code'  %}selected{% endif %}>Код</option>
+  </select>
+  <button type="submit" class="rl-search-btn"><i class="fas fa-search"></i></button>
+  {% if search_q or filter_type %}
+  <a href="?status={{ filter_status }}" class="rl-btn rl-btn-gray">Сбросить</a>
+  {% endif %}
+</form>
+
+<!-- Bulk action bar -->
+<div class="rl-bulk-bar" id="rl-bulk-bar">
+  <div class="rl-bulk-count"><i class="fas fa-check-square" style="color:var(--rl-blue);"></i> <span id="rl-bulk-count">0</span> выбрано</div>
+  <form method="post" action="{% url 'admin:testing_manual_review_bulk_grade' %}" class="rl-bulk-form">
+    {% csrf_token %}
+    <input type="hidden" name="verdict" value="correct">
+    <input type="hidden" name="answer_ids" id="bulk-ids-correct">
+    <button type="submit" class="rl-btn rl-btn-red" style="background:#059669;" onclick="document.getElementById('bulk-ids-correct').value=getSelectedIds()">
+      ✅ Засчитать выбранные
+    </button>
+  </form>
+  <form method="post" action="{% url 'admin:testing_manual_review_bulk_grade' %}" class="rl-bulk-form">
+    {% csrf_token %}
+    <input type="hidden" name="verdict" value="incorrect">
+    <input type="hidden" name="answer_ids" id="bulk-ids-incorrect">
+    <button type="submit" class="rl-btn rl-btn-red" onclick="document.getElementById('bulk-ids-incorrect').value=getSelectedIds()">
+      ❌ Не засчитать выбранные
+    </button>
+  </form>
+  <button class="rl-btn rl-btn-gray" onclick="clearSelection()">Снять выбор</button>
+</div>
+
+<!-- Table -->
+<div class="rl-table-wrap">
+  {% if answers %}
+  <table class="rl-table" id="rl-table">
+    <thead>
+      <tr>
+        <th class="cb"><input type="checkbox" id="select-all" title="Выбрать все"></th>
+        <th>Студент</th>
+        <th>Тест</th>
+        <th>Сессия</th>
+        <th>Вопрос</th>
+        <th>Тип</th>
+        <th>Ответ студента</th>
+        <th>AI оценка</th>
+        <th>Дата</th>
+        <th>Статус</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ans in answers %}
+      <tr data-id="{{ ans.pk }}">
+        <td style="text-align:center;">
+          <input type="checkbox" class="rl-cb" value="{{ ans.pk }}"
+                 {% if ans.grading_status not in 'pending,failed' %}disabled{% endif %}>
+        </td>
+        <td>
+          <a href="{% url 'admin:testing_studentattempt_change' ans.attempt_id %}">
+            <strong>{{ ans.attempt.student_name }}</strong>
+          </a>
+        </td>
+        <td>{{ ans.attempt.session.test.title }}</td>
+        <td style="font-size:12px;color:var(--rl-muted);">{{ ans.attempt.session.title|default:ans.attempt.session.key|truncatechars:16 }}</td>
+        <td style="max-width:180px;">{{ ans.question.text|truncatechars:60 }}</td>
+        <td>
+          {% if ans.question.question_type == 'text' %}
+            <span class="badge b-text">Текст</span>
+          {% else %}
+            <span class="badge b-code">{{ ans.question.language|default:'Код'|capfirst }}</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="ans-preview {% if ans.question.question_type == 'code' %}code{% endif %}"
+               title="{{ ans.answer_text }}">
+            {{ ans.answer_text|truncatechars:80 }}
+          </div>
+        </td>
+        <td>
+          {% if ans.ai_score is not None %}
+            <span style="font-weight:700;color:{% if ans.ai_score >= 6 %}#059669{% elif ans.ai_score >= 4 %}#d97706{% else %}#dc2626{% endif %};">
+              {{ ans.ai_score }}/10
+            </span>
+            {% if ans.ai_confidence %}
+              <br><span style="font-size:11px;color:var(--rl-muted);">{{ ans.ai_confidence|floatformat:0 }}% уверен.</span>
+            {% endif %}
+          {% else %}
+            <span style="color:var(--rl-muted);">—</span>
+          {% endif %}
+        </td>
+        <td style="font-size:12px;color:var(--rl-muted);white-space:nowrap;">{{ ans.answered_at|date:"d.m H:i" }}</td>
+        <td>
+          {% if ans.grading_status == 'pending' %}
+            <span class="badge" style="background:#fee2e2;color:#991b1b;">⏳ Ожидает</span>
+          {% elif ans.grading_status == 'manual' %}
+            {% if ans.is_correct %}
+              <span class="badge" style="background:#d1fae5;color:#065f46;">✓ Засчитан</span>
+            {% else %}
+              <span class="badge" style="background:#fee2e2;color:#991b1b;">✗ Не засчитан</span>
+            {% endif %}
+          {% elif ans.grading_status == 'done' %}
+            <span class="badge" style="background:#d1fae5;color:#065f46;">🤖 AI готово</span>
+          {% elif ans.grading_status == 'failed' %}
+            <span class="badge" style="background:#f3f4f6;color:#374151;">⚫ Ошибка AI</span>
+          {% else %}
+            <span class="badge" style="background:#dbeafe;color:#1d4ed8;">{{ ans.get_grading_status_display }}</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="qg-btns">
+            {% if ans.grading_status in 'pending,failed' %}
+              <!-- Quick grade buttons (AJAX) -->
+              <button class="qg-btn qg-btn-ok"
+                      onclick="quickGrade('{{ ans.pk }}','correct',this)"
+                      title="Засчитать">✅</button>
+              <button class="qg-btn qg-btn-no"
+                      onclick="quickGrade('{{ ans.pk }}','incorrect',this)"
+                      title="Не засчитать">❌</button>
+              <!-- Detail link -->
+              <a href="{% url 'admin:testing_manual_review_detail' ans.pk %}" class="qg-btn qg-btn-detail" title="Детальная проверка">🔍</a>
+            {% else %}
+              <a href="{% url 'admin:testing_manual_review_detail' ans.pk %}" class="qg-btn qg-btn-done" title="Просмотр">👁</a>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="rl-empty">
+    <i class="fas fa-inbox"></i>
+    <p>Ответов не найдено{% if search_q %} по запросу «{{ search_q }}»{% endif %}</p>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+// ── Quick grade (AJAX) ────────────────────────────────────────────────────────
+const CSRF = '{{ csrf_token }}';
+const QUICK_GRADE_URL = '{% url "admin:testing_manual_review_quick_grade" %}';
+
+function showToast(msg, type) {
+  const t = document.getElementById('rl-toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  setTimeout(() => { t.className = ''; }, 2800);
+}
+
+function quickGrade(answerId, verdict, btn) {
+  const row = btn.closest('tr');
+  fetch(QUICK_GRADE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+    body: JSON.stringify({ answer_id: answerId, verdict: verdict }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      const label = verdict === 'correct' ? '✅ Засчитан' : '❌ Не засчитан';
+      showToast(label + ' — ' + data.student_name + '. Балл: ' + data.new_score + '%', 'ok');
+      // Update row visually
+      const statusCell = row.querySelector('td:nth-child(11)');
+      const actCell    = row.querySelector('td:nth-child(12)');
+      const isOk = verdict === 'correct';
+      statusCell.innerHTML = isOk
+        ? '<span class="badge" style="background:#d1fae5;color:#065f46;">✓ Засчитан</span>'
+        : '<span class="badge" style="background:#fee2e2;color:#991b1b;">✗ Не засчитан</span>';
+      actCell.innerHTML = '<span class="qg-btn qg-btn-done">👁</span>';
+      row.querySelector('.rl-cb').disabled = true;
+    } else {
+      showToast('Ошибка: ' + (data.error || 'неизвестно'), 'err');
+    }
+  })
+  .catch(() => showToast('Сетевая ошибка', 'err'));
+}
+
+// ── Checkboxes & bulk ─────────────────────────────────────────────────────────
+const cbs      = () => Array.from(document.querySelectorAll('.rl-cb:not(:disabled)'));
+const selectAll = document.getElementById('select-all');
+const bulkBar   = document.getElementById('rl-bulk-bar');
+const bulkCount = document.getElementById('rl-bulk-count');
+
+function getSelectedIds() {
+  return cbs().filter(c => c.checked).map(c => c.value).join(',');
+}
+function clearSelection() {
+  cbs().forEach(c => c.checked = false);
+  if (selectAll) selectAll.checked = false;
+  updateBulk();
+}
+function updateBulk() {
+  const checked = cbs().filter(c => c.checked);
+  bulkCount.textContent = checked.length;
+  bulkBar.classList.toggle('visible', checked.length > 0);
+  document.querySelectorAll('#rl-table tbody tr').forEach(tr => {
+    const cb = tr.querySelector('.rl-cb');
+    tr.classList.toggle('selected', cb && cb.checked);
+  });
+}
+cbs().forEach(cb => cb.addEventListener('change', updateBulk));
+if (selectAll) {
+  selectAll.addEventListener('change', function() {
+    cbs().forEach(cb => { cb.checked = this.checked; });
+    updateBulk();
+  });
+}
+</script>
+{% endblock %}
