@@ -1,0 +1,567 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Проверка ответа — {{ block.super }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+:root {
+  --rv-navy:   #1f4e79;
+  --rv-blue:   #2563eb;
+  --rv-green:  #059669;
+  --rv-red:    #dc2626;
+  --rv-amber:  #d97706;
+  --rv-purple: #7c3aed;
+  --rv-teal:   #0891b2;
+  --rv-border: #e2e8f0;
+  --rv-bg:     #f8fafc;
+  --rv-white:  #ffffff;
+  --rv-muted:  #64748b;
+  --rv-ink:    #0f172a;
+  --radius:    14px;
+  --shadow:    0 2px 14px rgba(0,0,0,.07);
+}
+
+/* ── Toolbar ──────────────────────────────────────────────────────────────── */
+.rv-toolbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--rv-white); border: 1px solid var(--rv-border);
+  border-radius: var(--radius); padding: 12px 18px; margin-bottom: 22px;
+  box-shadow: var(--shadow); position: sticky; top: 0; z-index: 80;
+}
+.rv-toolbar-title {
+  font-size: 17px; font-weight: 800; color: var(--rv-navy);
+  display: flex; align-items: center; gap: 8px; margin-right: auto;
+}
+.rv-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 9px; font-size: 13px; font-weight: 700;
+  text-decoration: none; color: #fff; border: none; cursor: pointer;
+  transition: filter .15s, transform .12s; white-space: nowrap;
+}
+.rv-btn:hover { filter: brightness(1.1); transform: translateY(-1px); color: #fff; text-decoration: none; }
+.rv-btn-back    { background: #64748b; }
+.rv-btn-next    { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+.rv-btn-correct { background: linear-gradient(135deg,#10b981,#059669); font-size: 15px; padding: 11px 28px; }
+.rv-btn-wrong   { background: linear-gradient(135deg,#f87171,#dc2626); font-size: 15px; padding: 11px 28px; }
+.rv-btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+
+/* ── Layout ───────────────────────────────────────────────────────────────── */
+.rv-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 1100px) { .rv-layout { grid-template-columns: 1fr; } }
+
+/* ── Card base ────────────────────────────────────────────────────────────── */
+.rv-card {
+  background: var(--rv-white); border: 1px solid var(--rv-border);
+  border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  margin-bottom: 18px;
+}
+.rv-card-hdr {
+  display: flex; align-items: center; gap: 8px;
+  padding: 13px 18px; border-bottom: 1px solid var(--rv-border);
+  background: var(--rv-bg);
+  font-size: 13px; font-weight: 700; color: var(--rv-navy);
+}
+.rv-card-hdr i { font-size: 15px; }
+.rv-card-body { padding: 18px; }
+
+/* ── Question block ───────────────────────────────────────────────────────── */
+.rv-question-text {
+  font-size: 16px; font-weight: 700; color: var(--rv-ink); line-height: 1.6;
+  margin-bottom: 14px;
+}
+.rv-meta-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.rv-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+}
+.rv-chip-type-text   { background: #fef3c7; color: #92400e; }
+.rv-chip-type-code   { background: #fee2e2; color: #991b1b; }
+.rv-chip-easy    { background: #d1fae5; color: #065f46; }
+.rv-chip-medium  { background: #fef3c7; color: #92400e; }
+.rv-chip-hard    { background: #fee2e2; color: #991b1b; }
+.rv-chip-lang    { background: #dbeafe; color: #1d4ed8; }
+
+/* ── Answer block ─────────────────────────────────────────────────────────── */
+.rv-answer-box {
+  background: #f8fafc; border: 1.5px solid var(--rv-border);
+  border-radius: 9px; padding: 16px;
+  font-size: 14px; line-height: 1.7; color: var(--rv-ink);
+  white-space: pre-wrap; word-break: break-word;
+  min-height: 80px; max-height: 480px; overflow-y: auto;
+}
+.rv-answer-box.code-answer {
+  font-family: 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+  font-size: 13px; background: #0f172a; color: #e2e8f0;
+  border-color: #334155; line-height: 1.6;
+}
+.rv-answer-empty {
+  color: var(--rv-muted); font-style: italic; font-size: 13px;
+}
+
+/* ── AI feedback block ────────────────────────────────────────────────────── */
+.rv-ai-block {
+  background: linear-gradient(135deg, #ede9fe 0%, #f5f3ff 100%);
+  border: 1.5px solid #c4b5fd; border-radius: 10px; padding: 16px;
+  margin-top: 2px;
+}
+.rv-ai-hdr {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+  font-size: 13px; font-weight: 700; color: #5b21b6;
+}
+.rv-ai-score-big {
+  font-size: 32px; font-weight: 900; line-height: 1;
+  color: #5b21b6;
+}
+.rv-ai-score-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 10px; }
+.rv-ai-score-sub { font-size: 12px; color: var(--rv-muted); margin-bottom: 4px; }
+.rv-ai-conf {
+  padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+  background: rgba(124,58,237,.12); color: #5b21b6;
+}
+.rv-ai-feedback  { font-size: 13px; color: #374151; line-height: 1.6; margin-bottom: 8px; }
+.rv-ai-suggestion {
+  font-size: 12px; color: #6b7280; background: rgba(255,255,255,.6);
+  border-radius: 7px; padding: 8px 12px; line-height: 1.5;
+  border-left: 3px solid #c4b5fd;
+}
+
+/* ── Grade action card ────────────────────────────────────────────────────── */
+.rv-grade-card {
+  background: var(--rv-white); border: 2px solid var(--rv-border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  overflow: hidden; margin-bottom: 18px;
+  position: sticky; top: 80px;
+}
+.rv-grade-card-hdr {
+  padding: 14px 18px; border-bottom: 1px solid var(--rv-border);
+  background: var(--rv-navy);
+  font-size: 14px; font-weight: 800; color: #fff;
+  display: flex; align-items: center; gap: 8px;
+}
+.rv-grade-card-body { padding: 18px; }
+.rv-grade-btns { display: flex; flex-direction: column; gap: 10px; }
+.rv-grade-btns .rv-btn { justify-content: center; }
+
+/* Current status indicator */
+.rv-current-status {
+  text-align: center; padding: 10px; border-radius: 8px; font-size: 13px;
+  font-weight: 700; margin-bottom: 14px;
+}
+.rv-status-pending  { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.rv-status-correct  { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+.rv-status-wrong    { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.rv-status-ai       { background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; }
+
+/* ── Meta sidebar cards ───────────────────────────────────────────────────── */
+.rv-meta-card { background: var(--rv-white); border: 1px solid var(--rv-border); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 18px; overflow: hidden; }
+.rv-meta-card-hdr { padding: 11px 16px; border-bottom: 1px solid var(--rv-border); background: var(--rv-bg); font-size: 12px; font-weight: 700; color: var(--rv-navy); text-transform: uppercase; letter-spacing: .05em; display: flex; align-items: center; gap: 7px; }
+.rv-meta-card-body { padding: 14px 16px; }
+.rv-meta-row2 { display: flex; justify-content: space-between; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+.rv-meta-row2:last-child { border-bottom: none; }
+.rv-meta-label { color: var(--rv-muted); font-size: 12px; }
+.rv-meta-value { font-weight: 600; color: var(--rv-ink); text-align: right; max-width: 160px; word-break: break-word; font-size: 12px; }
+
+/* ── Sibling answers ──────────────────────────────────────────────────────── */
+.rv-sibling-list { display: flex; flex-direction: column; gap: 6px; }
+.rv-sibling-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--rv-border);
+  font-size: 12px; color: var(--rv-muted); background: var(--rv-bg);
+}
+.rv-sibling-item.current { border-color: var(--rv-blue); background: #eff6ff; color: var(--rv-navy); font-weight: 700; }
+.rv-sibling-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.rv-dot-correct { background: var(--rv-green); }
+.rv-dot-wrong   { background: var(--rv-red); }
+.rv-dot-pending { background: #94a3b8; }
+.rv-dot-current { background: var(--rv-blue); }
+
+/* ── Navigation ───────────────────────────────────────────────────────────── */
+.rv-nav-bar {
+  display: flex; align-items: center; gap: 10px; justify-content: space-between;
+  background: var(--rv-white); border: 1px solid var(--rv-border);
+  border-radius: var(--radius); padding: 12px 18px; margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+.rv-nav-info { font-size: 13px; color: var(--rv-muted); display: flex; align-items: center; gap: 6px; }
+.rv-nav-info strong { color: var(--rv-navy); }
+
+/* ── Confirmation overlay ─────────────────────────────────────────────────── */
+#rv-confirm-overlay {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,.5); align-items: center; justify-content: center;
+}
+#rv-confirm-overlay.show { display: flex; }
+.rv-confirm-box {
+  background: var(--rv-white); border-radius: 16px; padding: 28px 32px;
+  max-width: 420px; width: 90%; box-shadow: 0 12px 40px rgba(0,0,0,.25);
+  text-align: center;
+}
+.rv-confirm-box h3 { margin: 0 0 10px; font-size: 18px; font-weight: 800; color: var(--rv-ink); }
+.rv-confirm-box p  { margin: 0 0 20px; font-size: 14px; color: var(--rv-muted); }
+.rv-confirm-btns { display: flex; gap: 10px; justify-content: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="rv-confirm-overlay">
+  <div class="rv-confirm-box">
+    <div style="font-size:40px;margin-bottom:10px;" id="confirm-icon">✅</div>
+    <h3 id="confirm-title">Засчитать ответ?</h3>
+    <p id="confirm-desc">Студент получит балл за этот вопрос. Подтвердите действие.</p>
+    <div class="rv-confirm-btns">
+      <button class="rv-btn" style="background:#64748b;" onclick="closeConfirm()">Отмена</button>
+      <form id="confirm-form" method="post" action="">
+        {% csrf_token %}
+        <input type="hidden" name="verdict" id="confirm-verdict">
+        <button type="submit" class="rv-btn" id="confirm-submit-btn">Подтвердить</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Toolbar -->
+<div class="rv-toolbar">
+  <div class="rv-toolbar-title">
+    <i class="fas fa-clipboard-check" style="color:var(--rv-red);"></i>
+    Проверка ответа
+  </div>
+  <a href="{% url 'admin:testing_manual_review_list' %}" class="rv-btn rv-btn-back">
+    <i class="fas fa-arrow-left"></i> К списку
+  </a>
+  {% if next_pending %}
+  <a href="{% url 'admin:testing_manual_review_detail' next_pending.pk %}" class="rv-btn rv-btn-next">
+    <i class="fas fa-arrow-right"></i> Следующий ожидающий
+  </a>
+  {% endif %}
+</div>
+
+<!-- Nav info bar -->
+<div class="rv-nav-bar">
+  <div class="rv-nav-info">
+    <i class="fas fa-user" style="color:var(--rv-blue);"></i>
+    Студент: <strong>{{ attempt.student_name }}</strong>
+  </div>
+  <div class="rv-nav-info">
+    <i class="fas fa-book-open" style="color:var(--rv-purple);"></i>
+    Тест: <strong>{{ test.title }}</strong>
+  </div>
+  <div class="rv-nav-info">
+    <i class="fas fa-clock" style="color:var(--rv-amber);"></i>
+    Дата ответа: <strong>{{ answer.answered_at|date:"d.m.Y H:i" }}</strong>
+  </div>
+  {% if session.title %}
+  <div class="rv-nav-info">
+    <i class="fas fa-layer-group" style="color:var(--rv-teal);"></i>
+    Сессия: <strong>{{ session.title }}</strong>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Main layout -->
+<div class="rv-layout">
+
+  <!-- LEFT: Question + Answer + AI -->
+  <div>
+
+    <!-- Question -->
+    <div class="rv-card">
+      <div class="rv-card-hdr">
+        <i class="fas fa-question-circle" style="color:var(--rv-blue);"></i>
+        Вопрос
+      </div>
+      <div class="rv-card-body">
+        <div class="rv-meta-row">
+          {% if question.question_type == 'text' %}
+            <span class="rv-chip rv-chip-type-text"><i class="fas fa-align-left"></i> Текстовый</span>
+          {% else %}
+            <span class="rv-chip rv-chip-type-code"><i class="fas fa-code"></i> Код</span>
+          {% endif %}
+          <span class="rv-chip rv-chip-{{ question.difficulty }}">
+            {% if question.difficulty == 'easy' %}🟢 Лёгкий{% elif question.difficulty == 'medium' %}🟡 Средний{% else %}🔴 Сложный{% endif %}
+          </span>
+          {% if question.language %}
+            <span class="rv-chip rv-chip-lang"><i class="fas fa-code"></i> {{ question.language|capfirst }}</span>
+          {% endif %}
+        </div>
+        <div class="rv-question-text">{{ question.text }}</div>
+      </div>
+    </div>
+
+    <!-- Student Answer -->
+    <div class="rv-card">
+      <div class="rv-card-hdr">
+        <i class="fas fa-pencil-alt" style="color:var(--rv-amber);"></i>
+        Ответ студента
+        <span style="margin-left:auto;font-size:11px;color:var(--rv-muted);font-weight:400;">
+          {{ answer.answer_text|length }} симв.
+        </span>
+      </div>
+      <div class="rv-card-body">
+        {% if answer.answer_text %}
+          <div class="rv-answer-box {% if question.question_type == 'code' %}code-answer{% endif %}">{{ answer.answer_text }}</div>
+        {% else %}
+          <div class="rv-answer-box">
+            <span class="rv-answer-empty">— Студент не дал ответа —</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- AI Feedback (if available) -->
+    {% if answer.ai_score is not None or answer.ai_feedback %}
+    <div class="rv-card">
+      <div class="rv-card-hdr">
+        <i class="fas fa-robot" style="color:#7c3aed;"></i>
+        Оценка AI
+        <span class="rv-chip rv-chip-lang" style="margin-left:auto;background:#ede9fe;color:#5b21b6;">
+          Статус: {{ answer.get_grading_status_display }}
+        </span>
+      </div>
+      <div class="rv-card-body">
+        <div class="rv-ai-block">
+          <div class="rv-ai-hdr">
+            <i class="fas fa-star"></i>
+            Результат AI проверки
+          </div>
+          {% if answer.ai_score is not None %}
+          <div class="rv-ai-score-row">
+            <div>
+              <div class="rv-ai-score-big">{{ answer.ai_score }}<span style="font-size:18px;font-weight:500;color:#9ca3af;">/10</span></div>
+              <div class="rv-ai-score-sub">
+                {% if answer.ai_score >= 6 %}
+                  <span style="color:#059669;">✓ Зачтено (≥ 6/10)</span>
+                {% else %}
+                  <span style="color:#dc2626;">✗ Не зачтено (&lt; 6/10)</span>
+                {% endif %}
+              </div>
+            </div>
+            {% if answer.ai_confidence %}
+            <div>
+              <span class="rv-ai-conf">Уверенность AI: {{ answer.ai_confidence|floatformat:0 }}%</span>
+            </div>
+            {% endif %}
+          </div>
+          {% endif %}
+          {% if answer.ai_feedback %}
+          <div class="rv-ai-feedback">{{ answer.ai_feedback }}</div>
+          {% endif %}
+          {% if answer.ai_suggestion %}
+          <div class="rv-ai-suggestion">
+            <i class="fas fa-lightbulb" style="color:#a78bfa;margin-right:6px;"></i>
+            {{ answer.ai_suggestion }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- RIGHT: Grade + Meta + Siblings -->
+  <div>
+
+    <!-- Grade action -->
+    <div class="rv-grade-card">
+      <div class="rv-grade-card-hdr">
+        <i class="fas fa-gavel"></i>
+        Вынести вердикт
+      </div>
+      <div class="rv-grade-card-body">
+
+        <!-- Current status -->
+        {% if answer.grading_status == 'pending' or answer.grading_status == 'failed' %}
+          <div class="rv-current-status rv-status-pending">⏳ Ожидает проверки</div>
+        {% elif answer.is_correct and answer.grading_status == 'manual' %}
+          <div class="rv-current-status rv-status-correct">✅ Засчитан (вручную)</div>
+        {% elif not answer.is_correct and answer.grading_status == 'manual' %}
+          <div class="rv-current-status rv-status-wrong">❌ Не засчитан (вручную)</div>
+        {% elif answer.grading_status == 'done' %}
+          <div class="rv-current-status rv-status-ai">
+            🤖 AI: {% if answer.is_correct %}Засчитан{% else %}Не засчитан{% endif %}
+          </div>
+        {% endif %}
+
+        <div class="rv-grade-btns">
+          <button class="rv-btn rv-btn-correct"
+                  onclick="openConfirm('correct')">
+            ✅ Засчитать ответ
+          </button>
+          <button class="rv-btn rv-btn-wrong"
+                  onclick="openConfirm('incorrect')">
+            ❌ Не засчитывать
+          </button>
+        </div>
+
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--rv-border);font-size:12px;color:var(--rv-muted);text-align:center;">
+          Вердикт пересчитает балл студента автоматически.
+        </div>
+      </div>
+    </div>
+
+    <!-- Attempt meta -->
+    <div class="rv-meta-card">
+      <div class="rv-meta-card-hdr">
+        <i class="fas fa-user"></i> Студент и попытка
+      </div>
+      <div class="rv-meta-card-body">
+        <div class="rv-meta-row2">
+          <span class="rv-meta-label">Студент</span>
+          <span class="rv-meta-value">
+            <a href="{% url 'admin:testing_studentattempt_change' attempt.pk %}" style="color:var(--rv-blue);">
+              {{ attempt.student_name }}
+            </a>
+          </span>
+        </div>
+        <div class="rv-meta-row2">
+          <span class="rv-meta-label">Текущий балл</span>
+          <span class="rv-meta-value">
+            <strong style="color:{% if attempt.score >= 75 %}var(--rv-green){% elif attempt.score >= 50 %}var(--rv-amber){% else %}var(--rv-red){% endif %};">
+              {{ attempt.score }}%
+            </strong>
+          </span>
+        </div>
+        <div class="rv-meta-row2">
+          <span class="rv-meta-label">Статус попытки</span>
+          <span class="rv-meta-value">{{ attempt.get_status_display }}</span>
+        </div>
+        <div class="rv-meta-row2">
+          <span class="rv-meta-label">Начата</span>
+          <span class="rv-meta-value">{{ attempt.started_at|date:"d.m.Y H:i" }}</span>
+        </div>
+        {% if attempt.finished_at %}
+        <div class="rv-meta-row2">
+          <span class="rv-meta-label">Завершена</span>
+          <span class="rv-meta-value">{{ attempt.finished_at|date:"d.m.Y H:i" }}</span>
+        </div>
+        {% endif %}
+        <div class="rv-meta-row2">
+          <span class="rv-meta-label">Сессия</span>
+          <span class="rv-meta-value">
+            <a href="{% url 'admin:testing_testsession_change' session.pk %}" style="color:var(--rv-blue);font-size:11px;">
+              {{ session.title|default:session.key|truncatechars:20 }}
+            </a>
+          </span>
+        </div>
+        <div class="rv-meta-row2">
+          <span class="rv-meta-label">Тест</span>
+          <span class="rv-meta-value" style="font-size:11px;">{{ test.title|truncatechars:24 }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sibling answers context -->
+    {% if sibling_answers %}
+    <div class="rv-meta-card">
+      <div class="rv-meta-card-hdr">
+        <i class="fas fa-list-ul"></i> Все ответы этой попытки
+      </div>
+      <div class="rv-meta-card-body">
+        <div class="rv-sibling-list">
+          {% for sa in sibling_answers %}
+          <div class="rv-sibling-item {% if sa.pk == answer.pk %}current{% endif %}">
+            {% if sa.pk == answer.pk %}
+              <div class="rv-sibling-dot rv-dot-current"></div>
+              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                <i class="fas fa-arrow-right" style="color:var(--rv-blue);margin-right:4px;"></i>
+                {{ sa.question.text|truncatechars:40 }}
+              </span>
+            {% elif sa.is_correct is True %}
+              <div class="rv-sibling-dot rv-dot-correct"></div>
+              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#374151;">{{ sa.question.text|truncatechars:40 }}</span>
+              <span style="color:var(--rv-green);font-size:11px;font-weight:700;">✓</span>
+            {% elif sa.is_correct is False %}
+              <div class="rv-sibling-dot rv-dot-wrong"></div>
+              <a href="{% url 'admin:testing_manual_review_detail' sa.pk %}" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#374151;text-decoration:none;">{{ sa.question.text|truncatechars:40 }}</a>
+              <span style="color:var(--rv-red);font-size:11px;font-weight:700;">✗</span>
+            {% else %}
+              <div class="rv-sibling-dot rv-dot-pending"></div>
+              <a href="{% url 'admin:testing_manual_review_detail' sa.pk %}" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#374151;text-decoration:none;">{{ sa.question.text|truncatechars:40 }}</a>
+              <span style="color:var(--rv-muted);font-size:11px;">⏳</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Next pending hint -->
+    {% if next_pending %}
+    <div class="rv-card" style="border-color:#bfdbfe;">
+      <div class="rv-card-body" style="padding:14px 16px;">
+        <div style="font-size:12px;color:var(--rv-blue);font-weight:700;margin-bottom:6px;">
+          <i class="fas fa-forward"></i> Следующий ожидает проверки
+        </div>
+        <div style="font-size:12px;color:#374151;margin-bottom:10px;">
+          {{ next_pending.attempt.student_name }} — {{ next_pending.question.text|truncatechars:50 }}
+        </div>
+        <a href="{% url 'admin:testing_manual_review_detail' next_pending.pk %}" class="rv-btn rv-btn-next" style="width:100%;justify-content:center;">
+          <i class="fas fa-arrow-right"></i> Перейти
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<script>
+const GRADE_URL = "{% url 'admin:testing_manual_review_grade' answer.pk %}";
+
+function openConfirm(verdict) {
+  const overlay = document.getElementById('rv-confirm-overlay');
+  const icon    = document.getElementById('confirm-icon');
+  const title   = document.getElementById('confirm-title');
+  const desc    = document.getElementById('confirm-desc');
+  const formEl  = document.getElementById('confirm-form');
+  const verdictEl = document.getElementById('confirm-verdict');
+  const submitBtn = document.getElementById('confirm-submit-btn');
+
+  formEl.action = GRADE_URL;
+  verdictEl.value = verdict;
+
+  if (verdict === 'correct') {
+    icon.textContent   = '✅';
+    title.textContent  = 'Засчитать ответ?';
+    desc.textContent   = 'Студент {{ attempt.student_name|escapejs }} получит балл за этот вопрос.';
+    submitBtn.className = 'rv-btn';
+    submitBtn.style.background = 'linear-gradient(135deg,#10b981,#059669)';
+    submitBtn.textContent = 'Засчитать';
+  } else {
+    icon.textContent   = '❌';
+    title.textContent  = 'Не засчитывать?';
+    desc.textContent   = 'Ответ студента {{ attempt.student_name|escapejs }} будет помечен как неверный.';
+    submitBtn.className = 'rv-btn';
+    submitBtn.style.background = 'linear-gradient(135deg,#f87171,#dc2626)';
+    submitBtn.textContent = 'Не засчитывать';
+  }
+
+  overlay.classList.add('show');
+}
+
+function closeConfirm() {
+  document.getElementById('rv-confirm-overlay').classList.remove('show');
+}
+
+// Close on overlay click
+document.getElementById('rv-confirm-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeConfirm();
+});
+
+// Keyboard shortcut: G = correct, B = wrong, Esc = cancel
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'g' || e.key === 'G') openConfirm('correct');
+  if (e.key === 'b' || e.key === 'B') openConfirm('incorrect');
+  if (e.key === 'Escape') closeConfirm();
+});
+</script>
+{% endblock %}
