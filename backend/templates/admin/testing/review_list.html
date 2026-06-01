@@ -200,11 +200,8 @@
         <th>Тест</th>
         <th>Сессия</th>
         <th>Вопрос</th>
-        <th>Тип</th>
         <th>Ответ студента</th>
-        <th>AI оценка</th>
-        <th>Дата</th>
-        <th>Статус</th>
+          <th>Статус</th>
         <th>Действия</th>
       </tr>
     </thead>
@@ -223,32 +220,14 @@
         <td>{{ ans.attempt.session.test.title }}</td>
         <td style="font-size:12px;color:var(--rl-muted);">{{ ans.attempt.session.title|default:ans.attempt.session.key|truncatechars:16 }}</td>
         <td style="max-width:180px;">{{ ans.question.text|truncatechars:60 }}</td>
-        <td>
-          {% if ans.question.question_type == 'text' %}
-            <span class="badge b-text">Текст</span>
-          {% else %}
-            <span class="badge b-code">{{ ans.question.language|default:'Код'|capfirst }}</span>
-          {% endif %}
-        </td>
+
         <td>
           <div class="ans-preview {% if ans.question.question_type == 'code' %}code{% endif %}"
                title="{{ ans.answer_text }}">
             {{ ans.answer_text|truncatechars:80 }}
           </div>
         </td>
-        <td>
-          {% if ans.ai_score is not None %}
-            <span style="font-weight:700;color:{% if ans.ai_score >= 6 %}#059669{% elif ans.ai_score >= 4 %}#d97706{% else %}#dc2626{% endif %};">
-              {{ ans.ai_score }}/10
-            </span>
-            {% if ans.ai_confidence %}
-              <br><span style="font-size:11px;color:var(--rl-muted);">{{ ans.ai_confidence|floatformat:0 }}% уверен.</span>
-            {% endif %}
-          {% else %}
-            <span style="color:var(--rl-muted);">—</span>
-          {% endif %}
-        </td>
-        <td style="font-size:12px;color:var(--rl-muted);white-space:nowrap;">{{ ans.answered_at|date:"d.m H:i" }}</td>
+
         <td>
           {% if ans.grading_status == 'pending' %}
             <span class="badge" style="background:#fee2e2;color:#991b1b;">⏳ Ожидает</span>
