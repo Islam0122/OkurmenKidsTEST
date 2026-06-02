@@ -5,344 +5,789 @@
 
 {% block extrahead %}
 {{ block.super }}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <style>
-:root {
-  --rl-navy:  #1f4e79; --rl-blue: #2563eb; --rl-green: #059669;
-  --rl-red:   #dc2626; --rl-amber: #d97706; --rl-purple: #7c3aed;
-  --rl-border: #e2e8f0; --rl-bg: #f8fafc; --rl-white: #ffffff;
-  --rl-muted: #64748b; --radius: 12px; --shadow: 0 2px 12px rgba(0,0,0,.07);
+*, *::before, *::after { box-sizing: border-box; }
+
+.rl-page {
+  --navy:    #1e3a5f;
+  --blue:    #2563eb;
+  --blue-lt: #dbeafe;
+  --blue-dk: #1d4ed8;
+  --green:   #059669;
+  --grn-lt:  #d1fae5;
+  --red:     #dc2626;
+  --red-lt:  #fee2e2;
+  --amber:   #d97706;
+  --amb-lt:  #fef3c7;
+  --purple:  #7c3aed;
+  --pur-lt:  #ede9fe;
+  --gray:    #64748b;
+  --border:  #e2e8f0;
+  --bg:      #f8fafc;
+  --bg2:     #f1f5f9;
+  --surface: #ffffff;
+  --ink:     #0f172a;
+  --ink3:    #334155;
+  --ink4:    #475569;
+  --muted:   #64748b;
+  --subtle:  #94a3b8;
+  --sh-xs: 0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --sh-sm: 0 2px 8px rgba(0,0,0,.08),0 1px 3px rgba(0,0,0,.04);
+  --sh-md: 0 4px 16px rgba(0,0,0,.10),0 2px 6px rgba(0,0,0,.05);
+  --r-sm: 6px; --r-md: 10px; --r-lg: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--bg);
+  line-height: 1.5;
+  padding-bottom: 60px;
 }
+.rl-page *, .rl-page *::before, .rl-page *::after { box-sizing: border-box; }
+
 /* ── Toolbar ──────────────────────────────────────────────────────────────── */
 .rl-toolbar {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  background: var(--rl-white); border: 1px solid var(--rl-border);
-  border-radius: var(--radius); padding: 12px 18px; margin-bottom: 16px; box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: rgba(255,255,255,.96);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  padding: 13px 20px;
+  margin-bottom: 24px;
+  box-shadow: var(--sh-sm);
+  position: sticky;
+  top: 0;
+  z-index: 90;
 }
-.rl-toolbar-title { font-size: 18px; font-weight: 800; color: var(--rl-navy); display: flex; align-items: center; gap: 8px; margin-right: auto; }
-.rl-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; color: #fff; transition: filter .15s, transform .12s; white-space: nowrap; }
-.rl-btn:hover { filter: brightness(1.1); transform: translateY(-1px); color: #fff; text-decoration: none; }
-.rl-btn-red    { background: linear-gradient(135deg,#ef4444,#dc2626); }
-.rl-btn-blue   { background: linear-gradient(135deg,#3b82f6,#2563eb); }
-.rl-btn-gray   { background: #64748b; }
+.rl-toolbar-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.rl-toolbar-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: -.02em;
+  white-space: nowrap;
+}
+.rl-toolbar-title i { color: var(--red); font-size: 18px; }
 
-/* ── Status pills ──────────────────────────────────────────────────────────── */
-.rl-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.rl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--r-md);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1;
+  transition: filter .15s, transform .12s;
+}
+.rl-btn:hover { filter: brightness(1.08); transform: translateY(-1px); text-decoration: none; }
+.rl-btn-primary { background: linear-gradient(135deg,#ef4444,#dc2626); color:#fff; box-shadow:0 2px 8px rgba(220,38,38,.22); }
+.rl-btn-primary:hover { color: #fff; }
+.rl-btn-blue    { background: linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; box-shadow:0 2px 8px rgba(37,99,235,.22); }
+.rl-btn-blue:hover { color: #fff; }
+.rl-btn-green   { background: linear-gradient(135deg,#10b981,#059669); color:#fff; box-shadow:0 2px 8px rgba(5,150,105,.22); }
+.rl-btn-green:hover { color: #fff; }
+.rl-btn-ghost   { background: var(--bg2); color: var(--ink4); border: 1px solid var(--border); }
+.rl-btn-ghost:hover { background: var(--surface); color: var(--navy); }
+
+/* ── Body ─────────────────────────────────────────────────────────────────── */
+.rl-body { padding: 0 20px; }
+
+/* ── Status Pills ─────────────────────────────────────────────────────────── */
+.rl-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
 .rl-pill {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
-  text-decoration: none; border: 2px solid transparent; transition: all .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1.5px solid transparent;
+  transition: all .15s;
+  cursor: pointer;
 }
-.rl-pill:hover { text-decoration: none; filter: brightness(1.05); }
-.rl-pill-pending { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
-.rl-pill-manual  { background: #fef3c7; color: #92400e; border-color: #fde68a; }
-.rl-pill-done    { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
-.rl-pill-failed  { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
-.rl-pill-all     { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
-.rl-pill.active  { box-shadow: 0 0 0 2px rgba(0,0,0,.18); }
+.rl-pill:hover { text-decoration: none; filter: brightness(.96); transform: translateY(-1px); }
+.rl-pill.active { box-shadow: var(--sh-sm); }
 
-/* ── Search ───────────────────────────────────────────────────────────────── */
-.rl-search-form { display: flex; gap: 8px; margin-bottom: 14px; }
-.rl-search-input {
-  flex: 1; max-width: 380px; padding: 9px 14px;
-  border: 1.5px solid var(--rl-border); border-radius: 8px;
-  font-size: 13px; color: var(--rl-navy); background: var(--rl-white);
-  transition: border-color .15s;
+.rl-pill-pending        { background: #fef2f2; color: #991b1b; border-color: #fca5a5; }
+.rl-pill-pending.active { background: #dc2626; color: #fff; border-color: #dc2626; }
+.rl-pill-manual         { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.rl-pill-manual.active  { background: #d97706; color: #fff; border-color: #d97706; }
+.rl-pill-done           { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.rl-pill-done.active    { background: #059669; color: #fff; border-color: #059669; }
+.rl-pill-failed         { background: var(--bg2); color: var(--ink4); border-color: var(--border); }
+.rl-pill-failed.active  { background: var(--gray); color: #fff; border-color: var(--gray); }
+.rl-pill-all            { background: var(--blue-lt); color: var(--blue-dk); border-color: #93c5fd; }
+.rl-pill-all.active     { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+.rl-pill-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  background: rgba(0,0,0,.12);
+  line-height: 1;
 }
-.rl-search-input:focus { outline: none; border-color: var(--rl-blue); }
-.rl-search-btn { padding: 9px 20px; background: var(--rl-blue); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; }
-.rl-type-select { padding: 9px 12px; border: 1.5px solid var(--rl-border); border-radius: 8px; font-size: 13px; background: var(--rl-white); }
+
+/* ── Search Bar ───────────────────────────────────────────────────────────── */
+.rl-search-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.rl-search-input {
+  flex: 1;
+  min-width: 200px;
+  max-width: 360px;
+  padding: 9px 14px 9px 36px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--surface);
+  transition: border-color .15s, box-shadow .15s;
+  position: relative;
+}
+.rl-search-wrap {
+  position: relative;
+  flex: 1;
+  max-width: 360px;
+  min-width: 200px;
+}
+.rl-search-wrap i {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--subtle);
+  font-size: 14px;
+  pointer-events: none;
+}
+.rl-search-input:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+}
+.rl-type-select {
+  padding: 9px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 13px;
+  color: var(--ink4);
+  background: var(--surface);
+  transition: border-color .15s;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394a3b8'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.rl-type-select:focus { outline: none; border-color: var(--blue); }
+
+/* ── Bulk Bar ─────────────────────────────────────────────────────────────── */
+.rl-bulk-bar {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 2px solid var(--blue);
+  border-radius: var(--r-lg);
+  padding: 12px 18px;
+  margin-bottom: 14px;
+  box-shadow: var(--sh-sm);
+  animation: rl-slidedown .2s ease;
+}
+@keyframes rl-slidedown { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+.rl-bulk-bar.visible { display: flex; }
+.rl-bulk-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-right: auto;
+}
+.rl-bulk-count i { color: var(--blue); }
+.rl-bulk-count strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 12px;
+  padding: 0 6px;
+}
+.rl-bulk-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* ── Table ────────────────────────────────────────────────────────────────── */
-.rl-table-wrap { background: var(--rl-white); border: 1px solid var(--rl-border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
-.rl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.rl-table thead th { background: var(--rl-navy); color: #fff; padding: 11px 12px; text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
-.rl-table thead th.cb { width: 38px; text-align: center; }
-.rl-table tbody td { padding: 11px 12px; border-bottom: 1px solid var(--rl-border); vertical-align: middle; }
-.rl-table tbody tr:last-child td { border-bottom: none; }
-.rl-table tbody tr:hover td { background: var(--rl-bg); }
-.rl-table tbody tr.selected td { background: #eff6ff; }
-
-/* badge */
-.badge { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 11px; font-weight: 700; }
-.b-text   { background: #fef3c7; color: #92400e; }
-.b-code   { background: #fee2e2; color: #991b1b; }
-
-/* answer preview */
-.ans-preview { font-family: 'Courier New', monospace; font-size: 12px; color: #374151; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ans-preview.code { background: #f1f5f9; border-radius: 4px; padding: 2px 6px; }
-
-/* quick grade buttons */
-.qg-btns { display: flex; gap: 5px; }
-.qg-btn {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 5px 12px; border-radius: 7px; font-size: 12px; font-weight: 700;
-  border: none; cursor: pointer; text-decoration: none; color: #fff; white-space: nowrap;
-  transition: filter .12s;
+.rl-table-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--sh-xs);
 }
-.qg-btn:hover { filter: brightness(1.1); }
-.qg-btn-ok  { background: #059669; }
-.qg-btn-no  { background: #dc2626; }
-.qg-btn-detail { background: #2563eb; }
-.qg-btn-done { background: #6b7280; cursor: default; }
-
-/* bulk bar */
-.rl-bulk-bar {
-  display: none; align-items: center; gap: 10px; flex-wrap: wrap;
-  background: var(--rl-white); border: 2px solid var(--rl-blue);
-  border-radius: var(--radius); padding: 10px 16px; margin-bottom: 12px; box-shadow: var(--shadow);
+.rl-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
 }
-.rl-bulk-bar.visible { display: flex; }
-.rl-bulk-count { font-size: 13px; font-weight: 700; color: var(--rl-navy); margin-right: auto; }
-.rl-bulk-form { display: flex; gap: 6px; }
+.rl-table-header-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rl-count-label {
+  padding: 3px 10px;
+  background: var(--bg2);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.rl-tbl-wrap { overflow-x: auto; }
+.rl-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.rl-tbl thead th {
+  background: var(--bg2);
+  color: var(--muted);
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.rl-tbl thead th.tc { text-align: center; }
+.rl-tbl thead th.cb-col { width: 42px; text-align: center; }
+.rl-tbl tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background .1s;
+}
+.rl-tbl tbody tr:last-child { border-bottom: none; }
+.rl-tbl tbody tr:hover { background: var(--bg); }
+.rl-tbl tbody tr.rl-selected { background: #eff6ff; }
+.rl-tbl td { padding: 12px 14px; vertical-align: middle; }
+.rl-tbl td.tc { text-align: center; }
 
-/* empty */
-.rl-empty { text-align: center; padding: 60px; color: var(--rl-muted); }
-.rl-empty i { font-size: 40px; opacity: .2; display: block; margin-bottom: 12px; }
+/* Checkbox */
+.rl-cb {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--blue);
+  border-radius: 4px;
+}
+.rl-select-all {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--blue);
+}
 
-/* toast */
+/* Student / test info */
+.rl-student-name { font-weight: 600; color: var(--ink); font-size: 13px; }
+.rl-student-link { color: inherit; text-decoration: none; }
+.rl-student-link:hover { color: var(--blue); }
+.rl-test-name { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.rl-session-name { font-size: 11px; color: var(--subtle); }
+
+/* Question text */
+.rl-question {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--ink3);
+}
+
+/* Answer preview */
+.rl-answer {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--ink4);
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  background: var(--bg2);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+/* Status badges */
+.rl-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.rl-badge-pending { background: #fef2f2; color: #991b1b; }
+.rl-badge-manual-ok { background: #d1fae5; color: #065f46; }
+.rl-badge-manual-no { background: #fef2f2; color: #991b1b; }
+.rl-badge-done    { background: #d1fae5; color: #065f46; }
+.rl-badge-failed  { background: var(--bg2); color: var(--ink4); }
+.rl-badge-other   { background: var(--blue-lt); color: var(--blue-dk); }
+
+/* Action buttons in table */
+.rl-actions { display: flex; gap: 5px; align-items: center; }
+.rl-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  text-decoration: none;
+  transition: filter .12s, transform .1s;
+  flex-shrink: 0;
+}
+.rl-action-btn:hover { filter: brightness(1.1); transform: scale(1.08); text-decoration: none; }
+.rl-action-ok     { background: var(--grn-lt); color: var(--green); }
+.rl-action-no     { background: var(--red-lt); color: var(--red); }
+.rl-action-detail { background: var(--blue-lt); color: var(--blue); }
+.rl-action-view   { background: var(--bg2); color: var(--muted); }
+
+/* ── Empty ────────────────────────────────────────────────────────────────── */
+.rl-empty {
+  text-align: center;
+  padding: 64px 24px;
+  color: var(--muted);
+}
+.rl-empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--bg2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+  font-size: 22px;
+  color: var(--subtle);
+}
+.rl-empty h4 { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: var(--ink3); }
+.rl-empty p  { margin: 0; font-size: 13px; }
+
+/* ── Toast ────────────────────────────────────────────────────────────────── */
 #rl-toast {
-  position: fixed; bottom: 24px; right: 24px; z-index: 9999;
-  background: #1f4e79; color: #fff; padding: 12px 22px;
-  border-radius: 10px; font-size: 13px; font-weight: 700;
-  box-shadow: 0 4px 20px rgba(0,0,0,.25);
-  transform: translateY(60px); opacity: 0;
-  transition: transform .3s, opacity .3s;
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 9999;
+  background: var(--navy);
+  color: #fff;
+  padding: 13px 22px;
+  border-radius: var(--r-lg);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--sh-md);
+  transform: translateY(80px);
+  opacity: 0;
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1), opacity .25s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  max-width: 340px;
 }
 #rl-toast.show { transform: translateY(0); opacity: 1; }
-#rl-toast.ok   { background: #059669; }
-#rl-toast.err  { background: #dc2626; }
+#rl-toast.ok  { background: var(--green); }
+#rl-toast.err { background: var(--red); }
+#rl-toast i { font-size: 16px; }
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width:700px) {
+  .rl-body { padding: 0 12px; }
+  .rl-toolbar { padding: 10px 12px; }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div id="rl-toast"></div>
+<!-- Toast -->
+<div id="rl-toast">
+  <i class="bi bi-check-circle-fill" id="rl-toast-icon"></i>
+  <span id="rl-toast-text"></span>
+</div>
 
-<div class="rl-toolbar">
-  <div class="rl-toolbar-title">
-    <i class="fas fa-clipboard-check" style="color:var(--rl-red);"></i>
-    Ручная проверка
+<div class="rl-page">
+
+  <!-- ── Toolbar ──────────────────────────────────────────────────────────── -->
+  <div class="rl-toolbar">
+    <div class="rl-toolbar-left">
+      <div class="rl-toolbar-title">
+        <i class="bi bi-clipboard2-check-fill"></i>
+        Ручная проверка
+      </div>
+    </div>
+    <a href="{% url 'admin:testing_review_dashboard' %}" class="rl-btn rl-btn-blue" style="color:white">
+      <i class="bi bi-speedometer2"></i> Дашборд
+    </a>
   </div>
-  <a href="{% url 'admin:testing_review_dashboard' %}" class="rl-btn rl-btn-blue">
-    <i class="fas fa-tachometer-alt"></i> Дашборд
-  </a>
-</div>
 
-<!-- Status pills -->
-<div class="rl-pills">
-  <a href="?status=pending&type={{ filter_type }}&q={{ search_q }}"
-     class="rl-pill rl-pill-pending {% if filter_status == 'pending' %}active{% endif %}">
-    🔴 Ожидают ({{ counts.pending }})
-  </a>
-  <a href="?status=manual&type={{ filter_type }}&q={{ search_q }}"
-     class="rl-pill rl-pill-manual {% if filter_status == 'manual' %}active{% endif %}">
-    🟠 Вручную ({{ counts.manual }})
-  </a>
-  <a href="?status=done&type={{ filter_type }}&q={{ search_q }}"
-     class="rl-pill rl-pill-done {% if filter_status == 'done' %}active{% endif %}">
-    🟢 AI готово ({{ counts.done }})
-  </a>
-  <a href="?status=failed&type={{ filter_type }}&q={{ search_q }}"
-     class="rl-pill rl-pill-failed {% if filter_status == 'failed' %}active{% endif %}">
-    ⚫ Ошибка ({{ counts.failed }})
-  </a>
-  <a href="?status=&type={{ filter_type }}&q={{ search_q }}"
-     class="rl-pill rl-pill-all {% if filter_status == '' %}active{% endif %}">
-    Все
-  </a>
-</div>
+  <div class="rl-body">
 
-<!-- Search + type filter -->
-<form method="get" class="rl-search-form">
-  <input type="hidden" name="status" value="{{ filter_status }}">
-  <input type="text" name="q" class="rl-search-input"
-         placeholder="Студент, вопрос, тест…" value="{{ search_q }}">
-  <select name="type" class="rl-type-select" onchange="this.form.submit()">
-    <option value="">Все типы</option>
-    <option value="text"  {% if filter_type == 'text'  %}selected{% endif %}>Текстовые</option>
-    <option value="code"  {% if filter_type == 'code'  %}selected{% endif %}>Код</option>
-  </select>
-  <button type="submit" class="rl-search-btn"><i class="fas fa-search"></i></button>
-  {% if search_q or filter_type %}
-  <a href="?status={{ filter_status }}" class="rl-btn rl-btn-gray">Сбросить</a>
-  {% endif %}
-</form>
+    <!-- ── Status Pills ──────────────────────────────────────────────────── -->
+    <div class="rl-pills">
+      <a href="?status=pending&type={{ filter_type }}&q={{ search_q }}"
+         class="rl-pill rl-pill-pending {% if filter_status == 'pending' %}active{% endif %}">
+        <i class="bi bi-clock-history"></i>
+        Ожидают
+        <span class="rl-pill-count">{{ counts.pending }}</span>
+      </a>
+      <a href="?status=manual&type={{ filter_type }}&q={{ search_q }}"
+         class="rl-pill rl-pill-manual {% if filter_status == 'manual' %}active{% endif %}">
+        <i class="bi bi-hand-index-thumb-fill"></i>
+        Вручную
+        <span class="rl-pill-count">{{ counts.manual }}</span>
+      </a>
+      <a href="?status=done&type={{ filter_type }}&q={{ search_q }}"
+         class="rl-pill rl-pill-done {% if filter_status == 'done' %}active{% endif %}">
+        <i class="bi bi-robot"></i>
+        AI готово
+        <span class="rl-pill-count">{{ counts.done }}</span>
+      </a>
+      <a href="?status=failed&type={{ filter_type }}&q={{ search_q }}"
+         class="rl-pill rl-pill-failed {% if filter_status == 'failed' %}active{% endif %}">
+        <i class="bi bi-exclamation-circle"></i>
+        Ошибка
+        <span class="rl-pill-count">{{ counts.failed }}</span>
+      </a>
+      <a href="?status=&type={{ filter_type }}&q={{ search_q }}"
+         class="rl-pill rl-pill-all {% if filter_status == '' %}active{% endif %}">
+        <i class="bi bi-grid-3x3-gap"></i>
+        Все
+      </a>
+    </div>
 
-<!-- Bulk action bar -->
-<div class="rl-bulk-bar" id="rl-bulk-bar">
-  <div class="rl-bulk-count"><i class="fas fa-check-square" style="color:var(--rl-blue);"></i> <span id="rl-bulk-count">0</span> выбрано</div>
-  <form method="post" action="{% url 'admin:testing_manual_review_bulk_grade' %}" class="rl-bulk-form">
-    {% csrf_token %}
-    <input type="hidden" name="verdict" value="correct">
-    <input type="hidden" name="answer_ids" id="bulk-ids-correct">
-    <button type="submit" class="rl-btn rl-btn-red" style="background:#059669;" onclick="document.getElementById('bulk-ids-correct').value=getSelectedIds()">
-      ✅ Засчитать выбранные
-    </button>
-  </form>
-  <form method="post" action="{% url 'admin:testing_manual_review_bulk_grade' %}" class="rl-bulk-form">
-    {% csrf_token %}
-    <input type="hidden" name="verdict" value="incorrect">
-    <input type="hidden" name="answer_ids" id="bulk-ids-incorrect">
-    <button type="submit" class="rl-btn rl-btn-red" onclick="document.getElementById('bulk-ids-incorrect').value=getSelectedIds()">
-      ❌ Не засчитать выбранные
-    </button>
-  </form>
-  <button class="rl-btn rl-btn-gray" onclick="clearSelection()">Снять выбор</button>
-</div>
+    <!-- ── Search Bar ─────────────────────────────────────────────────────── -->
+    <form method="get" class="rl-search-bar">
+      <input type="hidden" name="status" value="{{ filter_status }}">
+      <div class="rl-search-wrap">
+        <i class="bi bi-search"></i>
+        <input type="text" name="q" class="rl-search-input"
+               placeholder="Студент, вопрос, тест…"
+               value="{{ search_q }}">
+      </div>
+      <select name="type" class="rl-type-select" onchange="this.form.submit()">
+        <option value="">Все типы</option>
+        <option value="text" {% if filter_type == 'text' %}selected{% endif %}> Текстовые</option>
+        <option value="code" {% if filter_type == 'code' %}selected{% endif %}> Код</option>
+      </select>
+      <button type="submit" class="rl-btn rl-btn-blue">
+        <i class="bi bi-funnel"></i> Применить
+      </button>
+      {% if search_q or filter_type %}
+      <a href="?status={{ filter_status }}" class="rl-btn rl-btn-ghost">
+        <i class="bi bi-x-circle"></i> Сбросить
+      </a>
+      {% endif %}
+    </form>
 
-<!-- Table -->
-<div class="rl-table-wrap">
-  {% if answers %}
-  <table class="rl-table" id="rl-table">
-    <thead>
-      <tr>
-        <th class="cb"><input type="checkbox" id="select-all" title="Выбрать все"></th>
-        <th>Студент</th>
-        <th>Тест</th>
-        <th>Сессия</th>
-        <th>Вопрос</th>
-        <th>Ответ студента</th>
-          <th>Статус</th>
-        <th>Действия</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for ans in answers %}
-      <tr data-id="{{ ans.pk }}">
-        <td style="text-align:center;">
-          <input type="checkbox" class="rl-cb" value="{{ ans.pk }}"
-                 {% if ans.grading_status not in 'pending,failed' %}disabled{% endif %}>
-        </td>
-        <td>
-          <a href="{% url 'admin:testing_studentattempt_change' ans.attempt_id %}">
-            <strong>{{ ans.attempt.student_name }}</strong>
-          </a>
-        </td>
-        <td>{{ ans.attempt.session.test.title }}</td>
-        <td style="font-size:12px;color:var(--rl-muted);">{{ ans.attempt.session.title|default:ans.attempt.session.key|truncatechars:16 }}</td>
-        <td style="max-width:180px;">{{ ans.question.text|truncatechars:60 }}</td>
+    <!-- ── Bulk Action Bar ────────────────────────────────────────────────── -->
+    <div class="rl-bulk-bar" id="rl-bulk-bar">
+      <div class="rl-bulk-count">
+        <i class="bi bi-check2-square"></i>
+        Выбрано: <strong id="rl-bulk-count">0</strong>
+      </div>
+      <div class="rl-bulk-actions">
+        <form method="post" action="{% url 'admin:testing_manual_review_bulk_grade' %}" style="margin:0;">
+          {% csrf_token %}
+          <input type="hidden" name="verdict" value="correct">
+          <input type="hidden" name="answer_ids" id="bulk-ids-correct">
+          <button type="submit" class="rl-btn rl-btn-green"
+                  onclick="document.getElementById('bulk-ids-correct').value=getSelectedIds()">
+            <i class="bi bi-check-circle-fill"></i> Засчитать выбранные
+          </button>
+        </form>
+        <form method="post" action="{% url 'admin:testing_manual_review_bulk_grade' %}" style="margin:0;">
+          {% csrf_token %}
+          <input type="hidden" name="verdict" value="incorrect">
+          <input type="hidden" name="answer_ids" id="bulk-ids-incorrect">
+          <button type="submit" class="rl-btn rl-btn-primary"
+                  onclick="document.getElementById('bulk-ids-incorrect').value=getSelectedIds()">
+            <i class="bi bi-x-circle-fill"></i> Не засчитать выбранные
+          </button>
+        </form>
+        <button class="rl-btn rl-btn-ghost" onclick="clearSelection()">
+          <i class="bi bi-x"></i> Снять выбор
+        </button>
+      </div>
+    </div>
 
-        <td>
-          <div class="ans-preview {% if ans.question.question_type == 'code' %}code{% endif %}"
-               title="{{ ans.answer_text }}">
-            {{ ans.answer_text|truncatechars:80 }}
-          </div>
-        </td>
+    <!-- ── Table ──────────────────────────────────────────────────────────── -->
+    <div class="rl-table-card">
+      <div class="rl-table-header">
+        <div class="rl-table-header-title">
+          <i class="bi bi-table"></i>
+          Ответы на проверке
+        </div>
+        {% if answers %}
+        <span class="rl-count-label">Показано: {{ answers|length }}</span>
+        {% endif %}
+      </div>
 
-        <td>
-          {% if ans.grading_status == 'pending' %}
-            <span class="badge" style="background:#fee2e2;color:#991b1b;">⏳ Ожидает</span>
-          {% elif ans.grading_status == 'manual' %}
-            {% if ans.is_correct %}
-              <span class="badge" style="background:#d1fae5;color:#065f46;">✓ Засчитан</span>
-            {% else %}
-              <span class="badge" style="background:#fee2e2;color:#991b1b;">✗ Не засчитан</span>
-            {% endif %}
-          {% elif ans.grading_status == 'done' %}
-            <span class="badge" style="background:#d1fae5;color:#065f46;">🤖 AI готово</span>
-          {% elif ans.grading_status == 'failed' %}
-            <span class="badge" style="background:#f3f4f6;color:#374151;">⚫ Ошибка AI</span>
-          {% else %}
-            <span class="badge" style="background:#dbeafe;color:#1d4ed8;">{{ ans.get_grading_status_display }}</span>
-          {% endif %}
-        </td>
-        <td>
-          <div class="qg-btns">
-            {% if ans.grading_status in 'pending,failed' %}
-              <!-- Quick grade buttons (AJAX) -->
-              <button class="qg-btn qg-btn-ok"
-                      onclick="quickGrade('{{ ans.pk }}','correct',this)"
-                      title="Засчитать">✅</button>
-              <button class="qg-btn qg-btn-no"
-                      onclick="quickGrade('{{ ans.pk }}','incorrect',this)"
-                      title="Не засчитать">❌</button>
-              <!-- Detail link -->
-              <a href="{% url 'admin:testing_manual_review_detail' ans.pk %}" class="qg-btn qg-btn-detail" title="Детальная проверка">🔍</a>
-            {% else %}
-              <a href="{% url 'admin:testing_manual_review_detail' ans.pk %}" class="qg-btn qg-btn-done" title="Просмотр">👁</a>
-            {% endif %}
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <div class="rl-empty">
-    <i class="fas fa-inbox"></i>
-    <p>Ответов не найдено{% if search_q %} по запросу «{{ search_q }}»{% endif %}</p>
+      {% if answers %}
+      <div class="rl-tbl-wrap">
+        <table class="rl-tbl" id="rl-table">
+          <thead>
+            <tr>
+              <th class="cb-col">
+                <input type="checkbox" class="rl-select-all" id="select-all" title="Выбрать все">
+              </th>
+              <th>Студент</th>
+              <th>Тест / Сессия</th>
+              <th>Вопрос</th>
+              <th>Ответ студента</th>
+              <th class="tc">Статус</th>
+              <th class="tc">Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ans in answers %}
+            <tr data-id="{{ ans.pk }}">
+              <td class="tc">
+                <input type="checkbox" class="rl-cb"
+                       value="{{ ans.pk }}"
+                       {% if ans.grading_status not in 'pending,failed' %}disabled{% endif %}>
+              </td>
+              <td>
+                <a href="{% url 'admin:testing_studentattempt_change' ans.attempt_id %}"
+                   class="rl-student-link">
+                  <div class="rl-student-name">{{ ans.attempt.student_name }}</div>
+                </a>
+              </td>
+              <td>
+                <div class="rl-test-name">{{ ans.attempt.session.test.title }}</div>
+                <div class="rl-session-name">{{ ans.attempt.session.title|default:ans.attempt.session.key|truncatechars:18 }}</div>
+              </td>
+              <td>
+                <div class="rl-question" title="{{ ans.question.text }}">
+                  {{ ans.question.text|truncatechars:60 }}
+                </div>
+              </td>
+              <td>
+                <div class="rl-answer" title="{{ ans.answer_text }}">
+                  {{ ans.answer_text|truncatechars:80 }}
+                </div>
+              </td>
+              <td class="tc">
+                {% if ans.grading_status == 'pending' %}
+                  <span class="rl-badge rl-badge-pending">
+                    <i class="bi bi-clock"></i> Ожидает
+                  </span>
+                {% elif ans.grading_status == 'manual' %}
+                  {% if ans.is_correct %}
+                    <span class="rl-badge rl-badge-manual-ok">
+                      <i class="bi bi-check-lg"></i> Засчитан
+                    </span>
+                  {% else %}
+                    <span class="rl-badge rl-badge-manual-no">
+                      <i class="bi bi-x-lg"></i> Не засчитан
+                    </span>
+                  {% endif %}
+                {% elif ans.grading_status == 'done' %}
+                  <span class="rl-badge rl-badge-done">
+                    <i class="bi bi-robot"></i> AI готово
+                  </span>
+                {% elif ans.grading_status == 'failed' %}
+                  <span class="rl-badge rl-badge-failed">
+                    <i class="bi bi-exclamation-circle"></i> Ошибка
+                  </span>
+                {% else %}
+                  <span class="rl-badge rl-badge-other">
+                    {{ ans.get_grading_status_display }}
+                  </span>
+                {% endif %}
+              </td>
+              <td class="tc">
+                <div class="rl-actions">
+                  {% if ans.grading_status in 'pending,failed' %}
+                    <button class="rl-action-btn rl-action-ok"
+                            onclick="quickGrade('{{ ans.pk }}','correct',this)"
+                            title="Засчитать ответ">
+                      <i class="bi bi-check-lg"></i>
+                    </button>
+                    <button class="rl-action-btn rl-action-no"
+                            onclick="quickGrade('{{ ans.pk }}','incorrect',this)"
+                            title="Не засчитывать">
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                    <a href="{% url 'admin:testing_manual_review_detail' ans.pk %}"
+                       class="rl-action-btn rl-action-detail"
+                       title="Детальная проверка">
+                      <i class="bi bi-eye-fill"></i>
+                    </a>
+                  {% else %}
+                    <a href="{% url 'admin:testing_manual_review_detail' ans.pk %}"
+                       class="rl-action-btn rl-action-view"
+                       title="Просмотр">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="rl-empty">
+        <div class="rl-empty-icon"><i class="bi bi-inbox"></i></div>
+        <h4>Ответов не найдено</h4>
+        <p>{% if search_q %}По запросу «{{ search_q }}» ничего не найдено.{% else %}В этой категории нет ответов.{% endif %}</p>
+      </div>
+      {% endif %}
+    </div>
+
   </div>
-  {% endif %}
 </div>
 
 <script>
-// ── Quick grade (AJAX) ────────────────────────────────────────────────────────
-const CSRF = '{{ csrf_token }}';
-const QUICK_GRADE_URL = '{% url "admin:testing_manual_review_quick_grade" %}';
+(function() {
+  'use strict';
 
-function showToast(msg, type) {
-  const t = document.getElementById('rl-toast');
-  t.textContent = msg;
-  t.className = 'show ' + type;
-  setTimeout(() => { t.className = ''; }, 2800);
-}
+  const CSRF = '{{ csrf_token }}';
+  const QUICK_URL = '{% url "admin:testing_manual_review_quick_grade" %}';
 
-function quickGrade(answerId, verdict, btn) {
-  const row = btn.closest('tr');
-  fetch(QUICK_GRADE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
-    body: JSON.stringify({ answer_id: answerId, verdict: verdict }),
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.ok) {
-      const label = verdict === 'correct' ? '✅ Засчитан' : '❌ Не засчитан';
-      showToast(label + ' — ' + data.student_name + '. Балл: ' + data.new_score + '%', 'ok');
-      // Update row visually
-      const statusCell = row.querySelector('td:nth-child(11)');
-      const actCell    = row.querySelector('td:nth-child(12)');
-      const isOk = verdict === 'correct';
-      statusCell.innerHTML = isOk
-        ? '<span class="badge" style="background:#d1fae5;color:#065f46;">✓ Засчитан</span>'
-        : '<span class="badge" style="background:#fee2e2;color:#991b1b;">✗ Не засчитан</span>';
-      actCell.innerHTML = '<span class="qg-btn qg-btn-done">👁</span>';
-      row.querySelector('.rl-cb').disabled = true;
-    } else {
-      showToast('Ошибка: ' + (data.error || 'неизвестно'), 'err');
-    }
-  })
-  .catch(() => showToast('Сетевая ошибка', 'err'));
-}
+  function showToast(msg, type) {
+    const t    = document.getElementById('rl-toast');
+    const icon = document.getElementById('rl-toast-icon');
+    const text = document.getElementById('rl-toast-text');
+    text.textContent = msg;
+    icon.className = type === 'ok' ? 'bi bi-check-circle-fill' : 'bi bi-x-circle-fill';
+    t.className = 'show ' + type;
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.className = ''; }, 3200);
+  }
 
-// ── Checkboxes & bulk ─────────────────────────────────────────────────────────
-const cbs      = () => Array.from(document.querySelectorAll('.rl-cb:not(:disabled)'));
-const selectAll = document.getElementById('select-all');
-const bulkBar   = document.getElementById('rl-bulk-bar');
-const bulkCount = document.getElementById('rl-bulk-count');
+  window.quickGrade = function(answerId, verdict, btn) {
+    btn.disabled = true;
+    btn.style.opacity = '.5';
+    fetch(QUICK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({ answer_id: answerId, verdict: verdict }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        const row = btn.closest('tr');
+        const label = verdict === 'correct' ? 'Засчитан' : 'Не засчитан';
+        const icon  = verdict === 'correct' ? 'bi-check-lg' : 'bi-x-lg';
+        const cls   = verdict === 'correct' ? 'rl-badge-manual-ok' : 'rl-badge-manual-no';
+        showToast(label + ' — ' + data.student_name + '. Балл: ' + data.new_score + '%', 'ok');
+        row.querySelector('td:nth-child(6)').innerHTML =
+          '<span class="rl-badge ' + cls + '"><i class="bi ' + icon + '"></i> ' + label + '</span>';
+        row.querySelector('td:nth-child(7)').innerHTML =
+          '<div class="rl-actions"><a href="/admin/testing/manual-review/' + answerId + '/" class="rl-action-btn rl-action-view" title="Просмотр"><i class="bi bi-eye"></i></a></div>';
+        const cb = row.querySelector('.rl-cb');
+        if (cb) cb.disabled = true;
+      } else {
+        btn.disabled = false;
+        btn.style.opacity = '';
+        showToast('Ошибка: ' + (data.error || 'неизвестно'), 'err');
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.style.opacity = '';
+      showToast('Сетевая ошибка', 'err');
+    });
+  };
 
-function getSelectedIds() {
-  return cbs().filter(c => c.checked).map(c => c.value).join(',');
-}
-function clearSelection() {
-  cbs().forEach(c => c.checked = false);
-  if (selectAll) selectAll.checked = false;
-  updateBulk();
-}
-function updateBulk() {
-  const checked = cbs().filter(c => c.checked);
-  bulkCount.textContent = checked.length;
-  bulkBar.classList.toggle('visible', checked.length > 0);
-  document.querySelectorAll('#rl-table tbody tr').forEach(tr => {
-    const cb = tr.querySelector('.rl-cb');
-    tr.classList.toggle('selected', cb && cb.checked);
-  });
-}
-cbs().forEach(cb => cb.addEventListener('change', updateBulk));
-if (selectAll) {
-  selectAll.addEventListener('change', function() {
-    cbs().forEach(cb => { cb.checked = this.checked; });
+  const cbs       = () => Array.from(document.querySelectorAll('.rl-cb:not(:disabled)'));
+  const selectAll = document.getElementById('select-all');
+  const bulkBar   = document.getElementById('rl-bulk-bar');
+  const bulkCount = document.getElementById('rl-bulk-count');
+
+  window.getSelectedIds = function() {
+    return cbs().filter(c => c.checked).map(c => c.value).join(',');
+  };
+  window.clearSelection = function() {
+    cbs().forEach(c => { c.checked = false; });
+    if (selectAll) selectAll.checked = false;
     updateBulk();
-  });
-}
+  };
+
+  function updateBulk() {
+    const checked = cbs().filter(c => c.checked);
+    const n = checked.length;
+    bulkCount.textContent = n;
+    bulkBar.classList.toggle('visible', n > 0);
+    document.querySelectorAll('#rl-table tbody tr').forEach(tr => {
+      const cb = tr.querySelector('.rl-cb');
+      tr.classList.toggle('rl-selected', !!(cb && cb.checked));
+    });
+  }
+
+  cbs().forEach(cb => cb.addEventListener('change', () => {
+    const allCbs = cbs();
+    const checkedCount = allCbs.filter(c => c.checked).length;
+    if (selectAll) {
+      selectAll.checked = checkedCount === allCbs.length && allCbs.length > 0;
+      selectAll.indeterminate = checkedCount > 0 && checkedCount < allCbs.length;
+    }
+    updateBulk();
+  }));
+
+  if (selectAll) {
+    selectAll.addEventListener('change', function() {
+      cbs().forEach(cb => { cb.checked = this.checked; });
+      updateBulk();
+    });
+  }
+})();
 </script>
 {% endblock %}

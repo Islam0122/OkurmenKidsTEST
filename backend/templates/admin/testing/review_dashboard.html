@@ -111,10 +111,10 @@
     <i class="fas fa-chalkboard-teacher" style="color:var(--rd-blue);"></i>
     Дашборд преподавателя
   </div>
-  <a href="{% url 'admin:testing_manual_review_list' %}" class="rd-action-btn rd-btn-red">
+  <a href="{% url 'admin:testing_manual_review_list' %}" class="rd-action-btn rd-btn-red" style="color:white">
     <i class="fas fa-clipboard-check"></i> Открыть ручную проверку
   </a>
-  <a href="{% url 'admin:testing_kpi_dashboard' %}" class="rd-action-btn rd-btn-blue">
+  <a href="{% url 'admin:testing_kpi_dashboard' %}" class="rd-action-btn rd-btn-blue" style="color:white">
     <i class="fas fa-chart-pie"></i> KPI Dashboard
   </a>
 </div>
@@ -127,7 +127,7 @@
     <p>Есть ответы студентов, требующие ручной проверки. Проверьте как можно скорее.</p>
   </div>
   <div class="rd-urgent-action">
-    <a href="{% url 'admin:testing_manual_review_list' %}?status=pending" class="rd-action-btn rd-btn-red">
+    <a href="{% url 'admin:testing_manual_review_list' %}?status=pending" class="rd-action-btn rd-btn-red" style="color:white">
       <i class="fas fa-arrow-right"></i> Проверить сейчас
     </a>
   </div>
@@ -157,12 +157,7 @@
     </div>
   </div>
 
-  <div class="rd-card a-amber">
-    <div class="rd-card-icon"><i class="fas fa-stopwatch"></i></div>
-    <div class="rd-card-num">—</div>
-    <div class="rd-card-label">Среднее время проверки</div>
-    <div class="rd-card-sub">Данные недоступны</div>
-  </div>
+
 
   <div class="rd-card a-blue">
     <div class="rd-card-icon"><i class="fas fa-graduation-cap"></i></div>

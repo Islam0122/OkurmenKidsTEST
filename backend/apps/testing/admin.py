@@ -1,16 +1,3 @@
-"""
-admin.py — Testing app (полная переработка UX проверки).
-
-Что добавлено:
-  1. ManualReviewAdmin    — список ответов на ручную проверку (отдельная страница)
-  2. ReviewDashboardView  — дашборд преподавателя /admin/testing/review-dashboard/
-  3. Улучшенный StudentAttemptAdmin — цветные бейджи, колонки correct/wrong/pending,
-                                       кнопка «Проверить ответы»
-  4. Улучшенный AnswerAdmin — поиск по студенту/вопросу/тесту, цветные фильтры
-  5. Массовые action-ы для быстрой проверки
-  6. Навигационные ссылки между объектами
-  7. select_related / prefetch_related везде — без N+1
-"""
 from __future__ import annotations
 
 import json as _json
@@ -36,7 +23,6 @@ logger = logging.getLogger(__name__)
 
 PASS_SCORE = 75
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _badge(text: str, color: str) -> str:
     return format_html(
@@ -68,7 +54,6 @@ GRADING_COLORS = {
 CHOICE_TYPES = {QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE}
 
 
-# ── Инлайн: варианты ответа ───────────────────────────────────────────────────
 
 class QuestionOptionNestedInline(nested_admin.NestedTabularInline):
     model               = QuestionOption
@@ -209,8 +194,6 @@ class AttemptInline(admin.TabularInline):
     review_answers_link.short_description = 'Ответы'
 
 
-# ── Test ──────────────────────────────────────────────────────────────────────
-
 @admin.register(Test)
 class TestAdmin(nested_admin.NestedModelAdmin):
     resource_classes = [TestResource]
@@ -249,8 +232,6 @@ class TestAdmin(nested_admin.NestedModelAdmin):
     question_count_display.short_description = 'Кол-во вопросов'
     question_count_display.admin_order_field = '_qcount'
 
-
-# ── Question ──────────────────────────────────────────────────────────────────
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
@@ -326,8 +307,6 @@ class QuestionAdmin(admin.ModelAdmin):
     options_link.short_description = 'Варианты ответов'
 
 
-# ── QuestionOption ────────────────────────────────────────────────────────────
-
 @admin.register(QuestionOption)
 class QuestionOptionAdmin(admin.ModelAdmin):
     resource_classes = [QuestionOptionResource]
@@ -352,15 +331,14 @@ class QuestionOptionAdmin(admin.ModelAdmin):
     correct_badge.admin_order_field = 'is_correct'
 
 
-# ── TestSession ───────────────────────────────────────────────────────────────
 
 @admin.register(TestSession)
 class TestSessionAdmin(admin.ModelAdmin):
     resource_classes = [TestSessionResource]
     list_display     = [
         'session_label', 'test_link', 'session_type_badge',
-        'status_badge', 'valid_indicator',
-        'expires_display', 'attempts_display', 'pending_answers_display',
+        'status_badge',
+        'expires_display', 'pending_answers_display',
         'created_at', 'review_link',
     ]
     list_filter      = ['session_type', 'status', 'is_active', 'test']
@@ -416,19 +394,24 @@ class TestSessionAdmin(admin.ModelAdmin):
         return format_html(
             '<span style="background:#e74c3c;color:#fff;padding:2px 10px;'
             'border-radius:12px;font-size:11px;font-weight:700;">'
-            '⏳ {} ожидают</span>', count
+            ' {} ожидают</span>', count
         )
     pending_answers_display.short_description = 'На проверке'
 
     def review_link(self, obj):
         if not obj or not obj.pk:
             return '—'
+
         url = reverse('admin:testing_manual_review_list') + f'?session={obj.pk}'
+
         return format_html(
-            '<a href="{}" style="background:#e74c3c;color:#fff;padding:6px 14px;'
-            'border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;'
-            'display:inline-block;">📋 Ответы на проверке</a>',
-            url,
+            '''
+            <a href="{}" class="btn btn-danger btn-sm">
+                <i class="bi bi-clipboard-check"></i>
+                Ответы на проверке
+            </a>
+            ''',
+            url
         )
     review_link.short_description = 'Проверка'
 
@@ -544,16 +527,13 @@ class TestSessionAdmin(admin.ModelAdmin):
         self.message_user(request, f'Завершено сессий: {count}.', messages.SUCCESS)
 
 
-# ── StudentAttempt ────────────────────────────────────────────────────────────
-
 @admin.register(StudentAttempt)
 class StudentAttemptAdmin(admin.ModelAdmin):
     resource_classes = [StudentAttemptResource]
     list_display     = [
-        'student_name', 'test_title', 'session_link', 'session_type_badge',
+        'student_name',  'session_link', 'session_type_badge',
         'status_badge', 'score_display',
-        'correct_count_display', 'wrong_count_display', 'pending_count_display',
-        'completion_display',
+        'pending_count_display',
         'started_at', 'duration_display',
         'review_answers_btn',
     ]
@@ -654,16 +634,47 @@ class StudentAttemptAdmin(admin.ModelAdmin):
 
     def pending_count_display(self, obj):
         count = getattr(obj, '_pending', None)
+
         if count is None:
             count = obj.answers.filter(
                 grading_status='pending',
                 question__question_type__in=['text', 'code'],
             ).count()
+
         if count == 0:
-            return _badge('0', '#27ae60')
+            return format_html(
+                '''
+                <span style="
+                    background:#ecfdf5;
+                    color:#059669;
+                    border:1px solid #a7f3d0;
+                    padding:5px 12px;
+                    border-radius:999px;
+                    font-size:12px;
+                    font-weight:600;
+                ">
+                    <i class="bi bi-check-circle-fill"></i>
+                    0
+                </span>
+                '''
+            )
+
         return format_html(
-            '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;'
-            'border-radius:10px;font-size:12px;font-weight:700;">⏳ {}</span>', count
+            '''
+            <span style="
+                background:#fffbeb;
+                color:#b45309;
+                border:1px solid #fde68a;
+                padding:5px 12px;
+                border-radius:999px;
+                font-size:12px;
+                font-weight:600;
+            ">
+                <i class="bi bi-hourglass-split"></i>
+                {}
+            </span>
+            ''',
+            count
         )
     pending_count_display.short_description = 'На проверке'
     pending_count_display.admin_order_field = '_pending'
@@ -688,11 +699,29 @@ class StudentAttemptAdmin(admin.ModelAdmin):
     def review_answers_btn(self, obj):
         if not obj or not obj.pk:
             return '—'
+
         url = reverse('admin:testing_answer_changelist') + f'?attempt__id__exact={obj.pk}'
+
         return format_html(
-            '<a href="{}" style="background:#2563eb;color:#fff;padding:7px 16px;'
-            'border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;'
-            'display:inline-block;">📋 Проверить ответы</a>',
+            '''
+            <a href="{}"
+               style="
+                    background:#eff6ff;
+                    color:#2563eb;
+                    border:1px solid #bfdbfe;
+                    padding:8px 14px;
+                    border-radius:12px;
+                    font-size:13px;
+                    font-weight:600;
+                    text-decoration:none;
+                    display:inline-flex;
+                    align-items:center;
+                    gap:6px;
+               ">
+               <i class="fas fa-check-circle"></i>
+               Проверить ответы
+            </a>
+            ''',
             url,
         )
     review_answers_btn.short_description = 'Действие'
@@ -706,8 +735,6 @@ class StudentAttemptAdmin(admin.ModelAdmin):
         m, s = divmod(int(secs), 60)
         return f'{m}м {s}с'
     duration_display.short_description = 'Длительность'
-
-    # ── Actions ───────────────────────────────────────────────────────────────
 
     @admin.action(description='✅ Засчитать все pending-ответы выбранных попыток')
     def bulk_approve_pending(self, request, queryset):
@@ -738,10 +765,7 @@ class StudentAttemptAdmin(admin.ModelAdmin):
         self.message_user(request, f'{label}: {count} ответов. Баллы пересчитаны.', messages.SUCCESS)
 
 
-# ── Answer ────────────────────────────────────────────────────────────────────
-
 class GradingStatusFilter(admin.SimpleListFilter):
-    """Цветной фильтр по статусу проверки."""
     title        = 'Статус проверки'
     parameter_name = 'grading_status'
 
@@ -799,8 +823,6 @@ class AnswerAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return True
-
-    # ── Columns ───────────────────────────────────────────────────────────────
 
     def student_name_link(self, obj):
         if not obj or not obj.attempt_id:
@@ -888,20 +910,53 @@ class AnswerAdmin(admin.ModelAdmin):
     def quick_grade_btn(self, obj):
         if not obj or not obj.pk:
             return '—'
+
         if obj.question.question_type not in ('text', 'code'):
             return '—'
+
         if obj.grading_status not in ('pending', 'failed'):
-            return _badge('Проверено', '#27ae60')
+            return format_html(
+                '''
+                <span style="
+                    background:#ecfdf5;
+                    color:#059669;
+                    border:1px solid #a7f3d0;
+                    padding:4px 10px;
+                    border-radius:999px;
+                    font-size:12px;
+                    font-weight:600;
+                ">
+                    <i class="bi bi-check-circle-fill"></i>
+                    Проверено
+                </span>
+                '''
+            )
+
         url = reverse('admin:testing_manual_review_detail', args=[obj.pk])
+
         return format_html(
-            '<a href="{}" style="background:#e74c3c;color:#fff;padding:3px 10px;'
-            'border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;">'
-            '🔍 Проверить</a>',
+            '''
+            <a href="{}"
+               style="
+                    background:#eff6ff;
+                    color:#2563eb;
+                    border:1px solid #bfdbfe;
+                    padding:6px 12px;
+                    border-radius:10px;
+                    font-size:12px;
+                    font-weight:600;
+                    text-decoration:none;
+                    display:inline-flex;
+                    align-items:center;
+                    gap:6px;
+                ">
+                <i class="bi bi-search"></i>
+                Проверить
+            </a>
+            ''',
             url,
         )
     quick_grade_btn.short_description = 'Действие'
-
-    # ── Actions ───────────────────────────────────────────────────────────────
 
     @admin.action(description='✅ Засчитать выбранные ответы')
     def action_approve(self, request, queryset):
@@ -929,8 +984,6 @@ class AnswerAdmin(admin.ModelAdmin):
         self.message_user(request, f'{label}: {count} ответов. Баллы пересчитаны.', messages.SUCCESS)
 
 
-# ── Unregister third-party models ─────────────────────────────────────────────
-
 from django.contrib.auth.models import Group, User  # noqa: E402
 from django.contrib import admin  # noqa: F811
 
@@ -944,9 +997,6 @@ for _m in [GroupResult, TaskResult, PeriodicTask, ClockedSchedule, IntervalSched
         pass
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-# KPI DASHBOARD (existing, unchanged)
-# ═════════════════════════════════════════════════════════════════════════════
 
 from django.contrib.admin.views.decorators import staff_member_required as _smd
 from django.http import HttpResponse as _HR
@@ -1022,10 +1072,6 @@ def kpi_export_view(request):
     return resp
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-# ANALYTICS (existing, unchanged)
-# ═════════════════════════════════════════════════════════════════════════════
-
 from django.contrib.admin import site as _admin_site
 from .analytics.views import (
     session_list_view,
@@ -1045,18 +1091,13 @@ def analyze_selected_sessions(modeladmin, request, queryset):
     ids_csv = ",".join(str(i) for i in ids)
     return _Redirect(f"/admin/analytics/multi/?sessions={ids_csv}")
 
-analyze_selected_sessions.short_description = "📊 Мультисессионная аналитика"
+analyze_selected_sessions.short_description = " Мультисессионная аналитика"
 
 try:
     if analyze_selected_sessions not in (TestSessionAdmin.actions or []):
         TestSessionAdmin.actions = list(TestSessionAdmin.actions or []) + [analyze_selected_sessions]
 except Exception:
     pass
-
-
-# ═════════════════════════════════════════════════════════════════════════════
-# URL REGISTRATION (все custom views через одну точку)
-# ═════════════════════════════════════════════════════════════════════════════
 
 from .review_admin_views import (
     review_dashboard_view,
@@ -1072,11 +1113,9 @@ _original_get_urls = _admin_site.__class__.get_urls
 
 def _patched_get_urls(self):
     custom = [
-        # KPI
         _path("testing/kpi/",         kpi_dashboard_view, name="testing_kpi_dashboard"),
         _path("testing/kpi/export/",  kpi_export_view,    name="testing_kpi_export"),
 
-        # Manual Review
         _path("testing/review-dashboard/",                    review_dashboard_view,    name="testing_review_dashboard"),
         _path("testing/manual-review/",                       review_list_view,         name="testing_manual_review_list"),
         _path("testing/manual-review/<uuid:answer_id>/",      review_detail_view,       name="testing_manual_review_detail"),
@@ -1084,7 +1123,6 @@ def _patched_get_urls(self):
         _path("testing/manual-review/quick-grade/",           review_quick_grade_view,  name="testing_manual_review_quick_grade"),
         _path("testing/manual-review/bulk-grade/",            review_bulk_grade_view,   name="testing_manual_review_bulk_grade"),
 
-        # Analytics
         _path("analytics/sessions/",                        session_list_view,              name="analytics_session_list"),
         _path("analytics/sessions/<str:session_id>/",       session_detail_view,            name="analytics_session_detail"),
         _path("analytics/sessions/<str:session_id>/export/", session_export_view,           name="analytics_session_export"),

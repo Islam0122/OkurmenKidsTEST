@@ -5,563 +5,1019 @@
 
 {% block extrahead %}
 {{ block.super }}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <style>
-:root {
-  --rv-navy:   #1f4e79;
-  --rv-blue:   #2563eb;
-  --rv-green:  #059669;
-  --rv-red:    #dc2626;
-  --rv-amber:  #d97706;
-  --rv-purple: #7c3aed;
-  --rv-teal:   #0891b2;
-  --rv-border: #e2e8f0;
-  --rv-bg:     #f8fafc;
-  --rv-white:  #ffffff;
-  --rv-muted:  #64748b;
-  --rv-ink:    #0f172a;
-  --radius:    14px;
-  --shadow:    0 2px 14px rgba(0,0,0,.07);
+*, *::before, *::after { box-sizing: border-box; }
+
+.rv-page {
+  --navy:    #1e3a5f;
+  --blue:    #2563eb;
+  --blue-lt: #dbeafe;
+  --blue-dk: #1d4ed8;
+  --green:   #059669;
+  --grn-lt:  #d1fae5;
+  --red:     #dc2626;
+  --red-lt:  #fee2e2;
+  --amber:   #d97706;
+  --amb-lt:  #fef3c7;
+  --purple:  #7c3aed;
+  --pur-lt:  #ede9fe;
+  --teal:    #0891b2;
+  --tel-lt:  #cffafe;
+  --border:  #e2e8f0;
+  --bg:      #f8fafc;
+  --bg2:     #f1f5f9;
+  --surface: #ffffff;
+  --ink:     #0f172a;
+  --ink3:    #334155;
+  --ink4:    #475569;
+  --muted:   #64748b;
+  --subtle:  #94a3b8;
+  --sh-xs: 0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --sh-sm: 0 2px 8px rgba(0,0,0,.08),0 1px 3px rgba(0,0,0,.04);
+  --sh-md: 0 4px 16px rgba(0,0,0,.10),0 2px 6px rgba(0,0,0,.05);
+  --sh-lg: 0 12px 40px rgba(0,0,0,.18);
+  --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 18px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--bg);
+  line-height: 1.5;
+  padding-bottom: 80px;
 }
+.rv-page *, .rv-page *::before, .rv-page *::after { box-sizing: border-box; }
 
 /* ── Toolbar ──────────────────────────────────────────────────────────────── */
 .rv-toolbar {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  background: var(--rv-white); border: 1px solid var(--rv-border);
-  border-radius: var(--radius); padding: 12px 18px; margin-bottom: 22px;
-  box-shadow: var(--shadow); position: sticky; top: 0; z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: rgba(255,255,255,.96);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  padding: 13px 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--sh-sm);
+  position: sticky;
+  top: 0;
+  z-index: 90;
+}
+.rv-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
 }
 .rv-toolbar-title {
-  font-size: 17px; font-weight: 800; color: var(--rv-navy);
-  display: flex; align-items: center; gap: 8px; margin-right: auto;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: -.02em;
+  white-space: nowrap;
 }
-.rv-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 16px; border-radius: 9px; font-size: 13px; font-weight: 700;
-  text-decoration: none; color: #fff; border: none; cursor: pointer;
-  transition: filter .15s, transform .12s; white-space: nowrap;
-}
-.rv-btn:hover { filter: brightness(1.1); transform: translateY(-1px); color: #fff; text-decoration: none; }
-.rv-btn-back    { background: #64748b; }
-.rv-btn-next    { background: linear-gradient(135deg,#3b82f6,#2563eb); }
-.rv-btn-correct { background: linear-gradient(135deg,#10b981,#059669); font-size: 15px; padding: 11px 28px; }
-.rv-btn-wrong   { background: linear-gradient(135deg,#f87171,#dc2626); font-size: 15px; padding: 11px 28px; }
-.rv-btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+.rv-toolbar-title i { color: var(--red); }
 
-/* ── Layout ───────────────────────────────────────────────────────────────── */
+.rv-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--r-md);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1;
+  transition: filter .15s, transform .12s, box-shadow .15s;
+}
+.rv-btn:hover { filter: brightness(1.08); transform: translateY(-1px); text-decoration: none; }
+.rv-btn-ghost  { background: var(--bg2); color: var(--ink4); border: 1px solid var(--border); }
+.rv-btn-ghost:hover { background: var(--surface); color: var(--navy); }
+.rv-btn-blue   { background: linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; box-shadow:0 2px 8px rgba(37,99,235,.22); }
+.rv-btn-blue:hover { color:#fff; }
+.rv-btn-next   { background: var(--blue-lt); color: var(--blue-dk); border: 1px solid #93c5fd; }
+.rv-btn-next:hover { background: #bfdbfe; color: var(--blue-dk); }
+
+/* ── Body & Layout ───────────────────────────────────────────────────────── */
+.rv-body { padding: 0 20px; }
 .rv-layout {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 1fr 330px;
   gap: 20px;
   align-items: start;
 }
-@media (max-width: 1100px) { .rv-layout { grid-template-columns: 1fr; } }
+@media (max-width:1100px) {
+  .rv-layout { grid-template-columns: 1fr; }
+  .rv-sidebar { order: -1; }
+}
 
-/* ── Card base ────────────────────────────────────────────────────────────── */
-.rv-card {
-  background: var(--rv-white); border: 1px solid var(--rv-border);
-  border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+/* ── Context strip (student/test/session info) ────────────────────────────── */
+.rv-context {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 14px 18px;
   margin-bottom: 18px;
+  box-shadow: var(--sh-xs);
+}
+.rv-context-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.rv-context-item i { font-size: 14px; color: var(--blue); }
+.rv-context-item strong { color: var(--ink); font-weight: 600; }
+.rv-context-sep { width: 1px; height: 16px; background: var(--border); flex-shrink: 0; }
+
+/* ── Cards ────────────────────────────────────────────────────────────────── */
+.rv-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--sh-xs);
+  margin-bottom: 16px;
 }
 .rv-card-hdr {
-  display: flex; align-items: center; gap: 8px;
-  padding: 13px 18px; border-bottom: 1px solid var(--rv-border);
-  background: var(--rv-bg);
-  font-size: 13px; font-weight: 700; color: var(--rv-navy);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink3);
 }
 .rv-card-hdr i { font-size: 15px; }
-.rv-card-body { padding: 18px; }
+.rv-card-hdr-badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.rv-card-body { padding: 18px 20px; }
 
-/* ── Question block ───────────────────────────────────────────────────────── */
-.rv-question-text {
-  font-size: 16px; font-weight: 700; color: var(--rv-ink); line-height: 1.6;
+/* ── Question ─────────────────────────────────────────────────────────────── */
+.rv-q-meta {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
   margin-bottom: 14px;
 }
-.rv-meta-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .rv-chip {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
 }
-.rv-chip-type-text   { background: #fef3c7; color: #92400e; }
-.rv-chip-type-code   { background: #fee2e2; color: #991b1b; }
-.rv-chip-easy    { background: #d1fae5; color: #065f46; }
-.rv-chip-medium  { background: #fef3c7; color: #92400e; }
-.rv-chip-hard    { background: #fee2e2; color: #991b1b; }
-.rv-chip-lang    { background: #dbeafe; color: #1d4ed8; }
+.rv-chip-text   { background: #fef3c7; color: #92400e; }
+.rv-chip-code   { background: #fee2e2; color: #991b1b; }
+.rv-chip-easy   { background: #d1fae5; color: #065f46; }
+.rv-chip-medium { background: #fef3c7; color: #92400e; }
+.rv-chip-hard   { background: #fee2e2; color: #991b1b; }
+.rv-chip-lang   { background: var(--blue-lt); color: var(--blue-dk); }
 
-/* ── Answer block ─────────────────────────────────────────────────────────── */
+.rv-question-text {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.6;
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+/* ── Answer box ───────────────────────────────────────────────────────────── */
 .rv-answer-box {
-  background: #f8fafc; border: 1.5px solid var(--rv-border);
-  border-radius: 9px; padding: 16px;
-  font-size: 14px; line-height: 1.7; color: var(--rv-ink);
-  white-space: pre-wrap; word-break: break-word;
-  min-height: 80px; max-height: 480px; overflow-y: auto;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink3);
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 90px;
+  max-height: 500px;
+  overflow-y: auto;
 }
 .rv-answer-box.code-answer {
-  font-family: 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-  font-size: 13px; background: #0f172a; color: #e2e8f0;
-  border-color: #334155; line-height: 1.6;
+  font-family: 'SFMono-Regular', 'Fira Code', Consolas, monospace;
+  font-size: 13px;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-color: #334155;
+  line-height: 1.6;
+}
+.rv-answer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--subtle);
+  margin-top: 8px;
 }
 .rv-answer-empty {
-  color: var(--rv-muted); font-style: italic; font-size: 13px;
+  color: var(--subtle);
+  font-style: italic;
+  font-size: 13px;
+  text-align: center;
+  padding: 20px;
 }
 
-/* ── AI feedback block ────────────────────────────────────────────────────── */
+/* ── AI block ─────────────────────────────────────────────────────────────── */
 .rv-ai-block {
-  background: linear-gradient(135deg, #ede9fe 0%, #f5f3ff 100%);
-  border: 1.5px solid #c4b5fd; border-radius: 10px; padding: 16px;
-  margin-top: 2px;
+  background: linear-gradient(135deg, #f5f3ff, #faf9ff);
+  border: 1.5px solid #c4b5fd;
+  border-radius: var(--r-lg);
+  padding: 20px;
 }
-.rv-ai-hdr {
-  display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
-  font-size: 13px; font-weight: 700; color: #5b21b6;
+.rv-ai-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
 }
-.rv-ai-score-big {
-  font-size: 32px; font-weight: 900; line-height: 1;
+.rv-ai-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  background: var(--pur-lt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--purple);
+  flex-shrink: 0;
+}
+.rv-ai-title { font-size: 14px; font-weight: 700; color: #4c1d95; }
+.rv-ai-subtitle { font-size: 12px; color: #6d28d9; }
+
+.rv-ai-score-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.rv-ai-score-num {
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1;
   color: #5b21b6;
+  letter-spacing: -.04em;
+  font-variant-numeric: tabular-nums;
 }
-.rv-ai-score-row { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 10px; }
-.rv-ai-score-sub { font-size: 12px; color: var(--rv-muted); margin-bottom: 4px; }
+.rv-ai-score-num span { font-size: 18px; font-weight: 400; color: #9ca3af; }
+.rv-ai-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.rv-ai-verdict-ok  { background: #d1fae5; color: #065f46; }
+.rv-ai-verdict-no  { background: #fee2e2; color: #991b1b; }
 .rv-ai-conf {
-  padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
-  background: rgba(124,58,237,.12); color: #5b21b6;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(124,58,237,.12);
+  color: #5b21b6;
+  font-size: 11px;
+  font-weight: 700;
 }
-.rv-ai-feedback  { font-size: 13px; color: #374151; line-height: 1.6; margin-bottom: 8px; }
+.rv-ai-feedback {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.65;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,.7);
+  border-radius: var(--r-md);
+  border: 1px solid rgba(196,181,253,.3);
+}
 .rv-ai-suggestion {
-  font-size: 12px; color: #6b7280; background: rgba(255,255,255,.6);
-  border-radius: 7px; padding: 8px 12px; line-height: 1.5;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.6;
+  padding: 10px 14px;
+  background: rgba(255,255,255,.5);
+  border-radius: var(--r-md);
   border-left: 3px solid #c4b5fd;
+  display: flex;
+  gap: 8px;
 }
+.rv-ai-suggestion i { color: #a78bfa; flex-shrink: 0; margin-top: 1px; }
 
-/* ── Grade action card ────────────────────────────────────────────────────── */
+/* ── Sidebar ──────────────────────────────────────────────────────────────── */
+.rv-sidebar > * { margin-bottom: 16px; }
+.rv-sidebar > *:last-child { margin-bottom: 0; }
+
+/* Grade card */
 .rv-grade-card {
-  background: var(--rv-white); border: 2px solid var(--rv-border);
-  border-radius: var(--radius); box-shadow: var(--shadow);
-  overflow: hidden; margin-bottom: 18px;
-  position: sticky; top: 80px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  box-shadow: var(--sh-sm);
+  position: sticky;
+  top: 80px;
 }
-.rv-grade-card-hdr {
-  padding: 14px 18px; border-bottom: 1px solid var(--rv-border);
-  background: var(--rv-navy);
-  font-size: 14px; font-weight: 800; color: #fff;
-  display: flex; align-items: center; gap: 8px;
+.rv-grade-hdr {
+  padding: 16px 20px;
+  background: linear-gradient(135deg, var(--navy), #1e40af);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: -.01em;
 }
-.rv-grade-card-body { padding: 18px; }
-.rv-grade-btns { display: flex; flex-direction: column; gap: 10px; }
-.rv-grade-btns .rv-btn { justify-content: center; }
+.rv-grade-body { padding: 20px; }
 
-/* Current status indicator */
+/* Current status */
 .rv-current-status {
-  text-align: center; padding: 10px; border-radius: 8px; font-size: 13px;
-  font-weight: 700; margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  border-radius: var(--r-md);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  justify-content: center;
 }
 .rv-status-pending  { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
 .rv-status-correct  { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
 .rv-status-wrong    { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
-.rv-status-ai       { background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; }
+.rv-status-ai       { background: var(--pur-lt); color: #5b21b6; border: 1px solid #c4b5fd; }
 
-/* ── Meta sidebar cards ───────────────────────────────────────────────────── */
-.rv-meta-card { background: var(--rv-white); border: 1px solid var(--rv-border); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 18px; overflow: hidden; }
-.rv-meta-card-hdr { padding: 11px 16px; border-bottom: 1px solid var(--rv-border); background: var(--rv-bg); font-size: 12px; font-weight: 700; color: var(--rv-navy); text-transform: uppercase; letter-spacing: .05em; display: flex; align-items: center; gap: 7px; }
-.rv-meta-card-body { padding: 14px 16px; }
-.rv-meta-row2 { display: flex; justify-content: space-between; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
-.rv-meta-row2:last-child { border-bottom: none; }
-.rv-meta-label { color: var(--rv-muted); font-size: 12px; }
-.rv-meta-value { font-weight: 600; color: var(--rv-ink); text-align: right; max-width: 160px; word-break: break-word; font-size: 12px; }
-
-/* ── Sibling answers ──────────────────────────────────────────────────────── */
-.rv-sibling-list { display: flex; flex-direction: column; gap: 6px; }
-.rv-sibling-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--rv-border);
-  font-size: 12px; color: var(--rv-muted); background: var(--rv-bg);
+/* Grade buttons */
+.rv-grade-btns { display: flex; flex-direction: column; gap: 10px; }
+.rv-grade-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  border-radius: var(--r-lg);
+  font-size: 14px;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  transition: filter .15s, transform .12s, box-shadow .15s;
+  letter-spacing: -.01em;
 }
-.rv-sibling-item.current { border-color: var(--rv-blue); background: #eff6ff; color: var(--rv-navy); font-weight: 700; }
-.rv-sibling-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.rv-dot-correct { background: var(--rv-green); }
-.rv-dot-wrong   { background: var(--rv-red); }
-.rv-dot-pending { background: #94a3b8; }
-.rv-dot-current { background: var(--rv-blue); }
-
-/* ── Navigation ───────────────────────────────────────────────────────────── */
-.rv-nav-bar {
-  display: flex; align-items: center; gap: 10px; justify-content: space-between;
-  background: var(--rv-white); border: 1px solid var(--rv-border);
-  border-radius: var(--radius); padding: 12px 18px; margin-bottom: 20px;
-  box-shadow: var(--shadow);
+.rv-grade-btn:hover { filter: brightness(1.08); transform: translateY(-2px); }
+.rv-grade-btn-ok {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(5,150,105,.3);
 }
-.rv-nav-info { font-size: 13px; color: var(--rv-muted); display: flex; align-items: center; gap: 6px; }
-.rv-nav-info strong { color: var(--rv-navy); }
-
-/* ── Confirmation overlay ─────────────────────────────────────────────────── */
-#rv-confirm-overlay {
-  display: none; position: fixed; inset: 0; z-index: 200;
-  background: rgba(0,0,0,.5); align-items: center; justify-content: center;
+.rv-grade-btn-no {
+  background: linear-gradient(135deg, #f87171, #dc2626);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(220,38,38,.3);
 }
-#rv-confirm-overlay.show { display: flex; }
-.rv-confirm-box {
-  background: var(--rv-white); border-radius: 16px; padding: 28px 32px;
-  max-width: 420px; width: 90%; box-shadow: 0 12px 40px rgba(0,0,0,.25);
+.rv-grade-hint {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--subtle);
   text-align: center;
+  line-height: 1.6;
 }
-.rv-confirm-box h3 { margin: 0 0 10px; font-size: 18px; font-weight: 800; color: var(--rv-ink); }
-.rv-confirm-box p  { margin: 0 0 20px; font-size: 14px; color: var(--rv-muted); }
-.rv-confirm-btns { display: flex; gap: 10px; justify-content: center; }
+.rv-grade-shortcut {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--subtle);
+}
+.rv-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink4);
+  font-family: monospace;
+}
+
+/* Meta sidebar card */
+.rv-meta-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--sh-xs);
+}
+.rv-meta-hdr {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.rv-meta-hdr i { font-size: 13px; }
+.rv-meta-body { padding: 14px 16px; }
+.rv-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+}
+.rv-meta-row:last-child { border-bottom: none; }
+.rv-meta-label { color: var(--muted); font-size: 12px; flex-shrink: 0; }
+.rv-meta-value { font-weight: 600; color: var(--ink); text-align: right; word-break: break-word; font-size: 12px; }
+.rv-meta-link { color: var(--blue); text-decoration: none; font-weight: 600; }
+.rv-meta-link:hover { text-decoration: underline; }
+
+/* Score display */
+.rv-score-display {
+  font-size: 16px;
+  font-weight: 800;
+}
+.rv-score-high { color: var(--green); }
+.rv-score-mid  { color: var(--amber); }
+.rv-score-low  { color: var(--red); }
+
+/* Sibling list */
+.rv-siblings { display: flex; flex-direction: column; gap: 4px; }
+.rv-sibling {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--bg);
+  transition: background .1s;
+  text-decoration: none;
+}
+.rv-sibling:hover { background: var(--bg2); text-decoration: none; }
+.rv-sibling.current {
+  border-color: var(--blue);
+  background: var(--blue-lt);
+  color: var(--navy);
+  font-weight: 700;
+}
+.rv-sibling-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.rv-dot-ok      { background: var(--green); }
+.rv-dot-no      { background: var(--red); }
+.rv-dot-pending { background: var(--subtle); }
+.rv-dot-current { background: var(--blue); }
+.rv-sibling-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rv-sibling-indicator { font-size: 11px; font-weight: 700; flex-shrink: 0; }
+
+/* Next pending hint */
+.rv-next-card {
+  background: linear-gradient(135deg, #eff6ff, #f0f9ff);
+  border: 1.5px solid #93c5fd;
+  border-radius: var(--r-lg);
+  padding: 16px;
+}
+.rv-next-label { font-size: 11px; font-weight: 700; color: var(--blue); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.rv-next-preview { font-size: 12px; color: var(--ink4); margin-bottom: 12px; line-height: 1.5; }
+
+/* ── Confirm Overlay ──────────────────────────────────────────────────────── */
+#rv-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0,0,0,.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  align-items: center;
+  justify-content: center;
+}
+#rv-overlay.show { display: flex; }
+.rv-modal {
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  padding: 32px 36px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: var(--sh-lg);
+  text-align: center;
+  animation: rv-modal-in .25s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes rv-modal-in {
+  from { opacity:0; transform:scale(.92) translateY(10px); }
+  to   { opacity:1; transform:scale(1)   translateY(0); }
+}
+.rv-modal-emoji { font-size: 48px; margin-bottom: 12px; line-height: 1; }
+.rv-modal h3 { margin: 0 0 8px; font-size: 20px; font-weight: 800; color: var(--ink); }
+.rv-modal p  { margin: 0 0 24px; font-size: 14px; color: var(--muted); line-height: 1.6; }
+.rv-modal-btns { display: flex; gap: 10px; justify-content: center; }
+.rv-modal-btn {
+  padding: 11px 24px;
+  border-radius: var(--r-md);
+  font-size: 14px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: filter .15s, transform .12s;
+}
+.rv-modal-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.rv-modal-cancel { background: var(--bg2); color: var(--ink4); }
+.rv-modal-confirm { color: #fff; }
+.rv-modal-confirm-ok { background: linear-gradient(135deg,#10b981,#059669); }
+.rv-modal-confirm-no { background: linear-gradient(135deg,#f87171,#dc2626); }
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width:700px) {
+  .rv-body { padding: 0 12px; }
+  .rv-toolbar { padding: 10px 12px; }
+  .rv-context { gap: 10px; }
+  .rv-context-sep { display: none; }
+  .rv-grade-card { position: static; }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div id="rv-confirm-overlay">
-  <div class="rv-confirm-box">
-    <div style="font-size:40px;margin-bottom:10px;" id="confirm-icon">✅</div>
-    <h3 id="confirm-title">Засчитать ответ?</h3>
-    <p id="confirm-desc">Студент получит балл за этот вопрос. Подтвердите действие.</p>
-    <div class="rv-confirm-btns">
-      <button class="rv-btn" style="background:#64748b;" onclick="closeConfirm()">Отмена</button>
-      <form id="confirm-form" method="post" action="">
+<!-- Confirm Overlay -->
+<div id="rv-overlay">
+  <div class="rv-modal">
+    <div class="rv-modal-emoji" id="rv-modal-emoji">✅</div>
+    <h3 id="rv-modal-title">Засчитать ответ?</h3>
+    <p id="rv-modal-desc">Студент получит балл за этот вопрос. Действие можно изменить позже.</p>
+    <div class="rv-modal-btns">
+      <button class="rv-modal-btn rv-modal-cancel" onclick="closeConfirm()">
+        Отмена
+      </button>
+      <form id="rv-confirm-form" method="post" action="" style="display:contents;">
         {% csrf_token %}
-        <input type="hidden" name="verdict" id="confirm-verdict">
-        <button type="submit" class="rv-btn" id="confirm-submit-btn">Подтвердить</button>
+        <input type="hidden" name="verdict" id="rv-confirm-verdict">
+        <button type="submit" class="rv-modal-btn rv-modal-confirm" id="rv-confirm-btn">
+          Подтвердить
+        </button>
       </form>
     </div>
   </div>
 </div>
 
-<!-- Toolbar -->
-<div class="rv-toolbar">
-  <div class="rv-toolbar-title">
-    <i class="fas fa-clipboard-check" style="color:var(--rv-red);"></i>
-    Проверка ответа
-  </div>
-  <a href="{% url 'admin:testing_manual_review_list' %}" class="rv-btn rv-btn-back">
-    <i class="fas fa-arrow-left"></i> К списку
-  </a>
-  {% if next_pending %}
-  <a href="{% url 'admin:testing_manual_review_detail' next_pending.pk %}" class="rv-btn rv-btn-next">
-    <i class="fas fa-arrow-right"></i> Следующий ожидающий
-  </a>
-  {% endif %}
-</div>
+<div class="rv-page">
 
-<!-- Nav info bar -->
-<div class="rv-nav-bar">
-  <div class="rv-nav-info">
-    <i class="fas fa-user" style="color:var(--rv-blue);"></i>
-    Студент: <strong>{{ attempt.student_name }}</strong>
-  </div>
-  <div class="rv-nav-info">
-    <i class="fas fa-book-open" style="color:var(--rv-purple);"></i>
-    Тест: <strong>{{ test.title }}</strong>
-  </div>
-  <div class="rv-nav-info">
-    <i class="fas fa-clock" style="color:var(--rv-amber);"></i>
-    Дата ответа: <strong>{{ answer.answered_at|date:"d.m.Y H:i" }}</strong>
-  </div>
-  {% if session.title %}
-  <div class="rv-nav-info">
-    <i class="fas fa-layer-group" style="color:var(--rv-teal);"></i>
-    Сессия: <strong>{{ session.title }}</strong>
-  </div>
-  {% endif %}
-</div>
-
-<!-- Main layout -->
-<div class="rv-layout">
-
-  <!-- LEFT: Question + Answer + AI -->
-  <div>
-
-    <!-- Question -->
-    <div class="rv-card">
-      <div class="rv-card-hdr">
-        <i class="fas fa-question-circle" style="color:var(--rv-blue);"></i>
-        Вопрос
+  <!-- ── Toolbar ──────────────────────────────────────────────────────────── -->
+  <div class="rv-toolbar">
+    <div class="rv-toolbar-left">
+      <a href="{% url 'admin:testing_manual_review_list' %}" class="rv-btn rv-btn-ghost">
+        <i class="bi bi-arrow-left"></i> Список
+      </a>
+      <div class="rv-toolbar-title">
+        <i class="bi bi-clipboard2-check-fill"></i>
+        Проверка ответа
       </div>
-      <div class="rv-card-body">
-        <div class="rv-meta-row">
-          {% if question.question_type == 'text' %}
-            <span class="rv-chip rv-chip-type-text"><i class="fas fa-align-left"></i> Текстовый</span>
-          {% else %}
-            <span class="rv-chip rv-chip-type-code"><i class="fas fa-code"></i> Код</span>
-          {% endif %}
-          <span class="rv-chip rv-chip-{{ question.difficulty }}">
-            {% if question.difficulty == 'easy' %}🟢 Лёгкий{% elif question.difficulty == 'medium' %}🟡 Средний{% else %}🔴 Сложный{% endif %}
-          </span>
-          {% if question.language %}
-            <span class="rv-chip rv-chip-lang"><i class="fas fa-code"></i> {{ question.language|capfirst }}</span>
-          {% endif %}
+    </div>
+    {% if next_pending %}
+    <a href="{% url 'admin:testing_manual_review_detail' next_pending.pk %}" class="rv-btn rv-btn-next">
+      <i class="bi bi-arrow-right-circle-fill"></i> Следующий ожидающий
+    </a>
+    {% endif %}
+  </div>
+
+  <div class="rv-body">
+
+    <!-- ── Context strip ─────────────────────────────────────────────────── -->
+    <div class="rv-context">
+      <div class="rv-context-item">
+        <i class="bi bi-person-fill"></i>
+        <strong>{{ attempt.student_name }}</strong>
+      </div>
+      <div class="rv-context-sep"></div>
+      <div class="rv-context-item">
+        <i class="bi bi-book-fill"></i>
+        <span>{{ test.title }}</span>
+      </div>
+      {% if session.title %}
+      <div class="rv-context-sep"></div>
+      <div class="rv-context-item">
+        <i class="bi bi-layer-forward"></i>
+        <span>{{ session.title }}</span>
+      </div>
+      {% endif %}
+      <div class="rv-context-sep"></div>
+      <div class="rv-context-item">
+        <i class="bi bi-calendar3"></i>
+        <span>{{ answer.answered_at|date:"d.m.Y H:i" }}</span>
+      </div>
+    </div>
+
+    <!-- ── Two-column layout ─────────────────────────────────────────────── -->
+    <div class="rv-layout">
+
+      <!-- LEFT: Question, Answer, AI -->
+      <div>
+
+        <!-- Question -->
+        <div class="rv-card">
+          <div class="rv-card-hdr">
+            <i class="bi bi-question-circle-fill" style="color:var(--blue);"></i>
+            Вопрос
+            <div class="rv-card-hdr-badge" style="{% if question.question_type == 'text' %}background:#fef3c7;color:#92400e;{% else %}background:#fee2e2;color:#991b1b;{% endif %}">
+              {% if question.question_type == 'text' %}
+                <i class="bi bi-text-left"></i> Текстовый
+              {% else %}
+                <i class="bi bi-code-slash"></i> Код
+              {% endif %}
+            </div>
+          </div>
+          <div class="rv-card-body">
+            <div class="rv-q-meta">
+              <span class="rv-chip rv-chip-{{ question.difficulty }}">
+                {% if question.difficulty == 'easy' %}🟢 Лёгкий
+                {% elif question.difficulty == 'medium' %}🟡 Средний
+                {% else %}🔴 Сложный{% endif %}
+              </span>
+              {% if question.language %}
+              <span class="rv-chip rv-chip-lang">
+                <i class="bi bi-code"></i> {{ question.language|capfirst }}
+              </span>
+              {% endif %}
+            </div>
+            <div class="rv-question-text">{{ question.text }}</div>
+          </div>
         </div>
-        <div class="rv-question-text">{{ question.text }}</div>
-      </div>
-    </div>
 
-    <!-- Student Answer -->
-    <div class="rv-card">
-      <div class="rv-card-hdr">
-        <i class="fas fa-pencil-alt" style="color:var(--rv-amber);"></i>
-        Ответ студента
-        <span style="margin-left:auto;font-size:11px;color:var(--rv-muted);font-weight:400;">
-          {{ answer.answer_text|length }} симв.
-        </span>
-      </div>
-      <div class="rv-card-body">
-        {% if answer.answer_text %}
-          <div class="rv-answer-box {% if question.question_type == 'code' %}code-answer{% endif %}">{{ answer.answer_text }}</div>
-        {% else %}
-          <div class="rv-answer-box">
-            <span class="rv-answer-empty">— Студент не дал ответа —</span>
+        <!-- Student Answer -->
+        <div class="rv-card">
+          <div class="rv-card-hdr">
+            <i class="bi bi-pencil-fill" style="color:var(--amber);"></i>
+            Ответ студента
           </div>
-        {% endif %}
-      </div>
-    </div>
+          <div class="rv-card-body">
+            {% if answer.answer_text %}
+              <div class="rv-answer-box {% if question.question_type == 'code' %}code-answer{% endif %}">{{ answer.answer_text }}</div>
+              <div class="rv-answer-meta">
+                <i class="bi bi-text-paragraph"></i>
+                {{ answer.answer_text|length }} символов
+              </div>
+            {% else %}
+              <div class="rv-answer-box">
+                <div class="rv-answer-empty">
+                  <i class="bi bi-dash-circle"></i>&nbsp; Студент не предоставил ответ
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
 
-    <!-- AI Feedback (if available) -->
-    {% if answer.ai_score is not None or answer.ai_feedback %}
-    <div class="rv-card">
-      <div class="rv-card-hdr">
-        <i class="fas fa-robot" style="color:#7c3aed;"></i>
-        Оценка AI
-        <span class="rv-chip rv-chip-lang" style="margin-left:auto;background:#ede9fe;color:#5b21b6;">
-          Статус: {{ answer.get_grading_status_display }}
-        </span>
-      </div>
-      <div class="rv-card-body">
-        <div class="rv-ai-block">
-          <div class="rv-ai-hdr">
-            <i class="fas fa-star"></i>
-            Результат AI проверки
+        <!-- AI Feedback -->
+        {% if answer.ai_score is not None or answer.ai_feedback %}
+        <div class="rv-card">
+          <div class="rv-card-hdr">
+            <i class="bi bi-robot" style="color:var(--purple);"></i>
+            Результат AI-проверки
+            <div class="rv-card-hdr-badge" style="background:var(--pur-lt);color:#5b21b6;">
+              {{ answer.get_grading_status_display }}
+            </div>
           </div>
-          {% if answer.ai_score is not None %}
-          <div class="rv-ai-score-row">
-            <div>
-              <div class="rv-ai-score-big">{{ answer.ai_score }}<span style="font-size:18px;font-weight:500;color:#9ca3af;">/10</span></div>
-              <div class="rv-ai-score-sub">
-                {% if answer.ai_score >= 6 %}
-                  <span style="color:#059669;">✓ Зачтено (≥ 6/10)</span>
-                {% else %}
-                  <span style="color:#dc2626;">✗ Не зачтено (&lt; 6/10)</span>
+          <div class="rv-card-body">
+            <div class="rv-ai-block">
+              <div class="rv-ai-header">
+                <div class="rv-ai-icon"><i class="bi bi-stars"></i></div>
+                <div>
+                  <div class="rv-ai-title">Автоматический анализ ответа</div>
+                  <div class="rv-ai-subtitle">GigaChat AI · нейронная проверка</div>
+                </div>
+              </div>
+
+              {% if answer.ai_score is not None %}
+              <div class="rv-ai-score-row">
+                <div>
+                  <div class="rv-ai-score-num">
+                    {{ answer.ai_score }}<span>/10</span>
+                  </div>
+                  <div style="margin-top:4px;">
+                    {% if answer.ai_score >= 6 %}
+                      <span class="rv-ai-verdict rv-ai-verdict-ok">
+                        <i class="bi bi-check-circle-fill"></i> Зачтено (≥ 6/10)
+                      </span>
+                    {% else %}
+                      <span class="rv-ai-verdict rv-ai-verdict-no">
+                        <i class="bi bi-x-circle-fill"></i> Не зачтено (&lt; 6/10)
+                      </span>
+                    {% endif %}
+                  </div>
+                </div>
+                {% if answer.ai_confidence %}
+                <div>
+                  <span class="rv-ai-conf">
+                    <i class="bi bi-bullseye"></i>
+                    Уверенность: {{ answer.ai_confidence|floatformat:0 }}%
+                  </span>
+                </div>
                 {% endif %}
               </div>
+              {% endif %}
+
+              {% if answer.ai_feedback %}
+              <div class="rv-ai-feedback">{{ answer.ai_feedback }}</div>
+              {% endif %}
+
+              {% if answer.ai_suggestion %}
+              <div class="rv-ai-suggestion">
+                <i class="bi bi-lightbulb-fill"></i>
+                {{ answer.ai_suggestion }}
+              </div>
+              {% endif %}
             </div>
-            {% if answer.ai_confidence %}
-            <div>
-              <span class="rv-ai-conf">Уверенность AI: {{ answer.ai_confidence|floatformat:0 }}%</span>
-            </div>
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+
+      <!-- RIGHT: Sidebar -->
+      <div class="rv-sidebar">
+
+        <!-- Grade action card -->
+        <div class="rv-grade-card">
+          <div class="rv-grade-hdr">
+            <i class="bi bi-gavel"></i>
+            Вынести вердикт
+          </div>
+          <div class="rv-grade-body">
+
+            <!-- Current status -->
+            {% if answer.grading_status == 'pending' or answer.grading_status == 'failed' %}
+              <div class="rv-current-status rv-status-pending">
+                <i class="bi bi-clock-history"></i> Ожидает проверки
+              </div>
+            {% elif answer.is_correct and answer.grading_status == 'manual' %}
+              <div class="rv-current-status rv-status-correct">
+                <i class="bi bi-check-circle-fill"></i> Засчитан вручную
+              </div>
+            {% elif not answer.is_correct and answer.grading_status == 'manual' %}
+              <div class="rv-current-status rv-status-wrong">
+                <i class="bi bi-x-circle-fill"></i> Не засчитан вручную
+              </div>
+            {% elif answer.grading_status == 'done' %}
+              <div class="rv-current-status rv-status-ai">
+                <i class="bi bi-robot"></i>
+                AI: {% if answer.is_correct %}Засчитан{% else %}Не засчитан{% endif %}
+              </div>
             {% endif %}
+
+            <!-- Verdict buttons -->
+            <div class="rv-grade-btns">
+              <button class="rv-grade-btn rv-grade-btn-ok"
+                      onclick="openConfirm('correct')">
+                <i class="bi bi-check-circle-fill"></i>
+                Засчитать ответ
+              </button>
+              <button class="rv-grade-btn rv-grade-btn-no"
+                      onclick="openConfirm('incorrect')">
+                <i class="bi bi-x-circle-fill"></i>
+                Не засчитывать
+              </button>
+            </div>
+
+            <div class="rv-grade-hint">
+              Вердикт автоматически пересчитает балл студента.
+            </div>
+            <div class="rv-grade-shortcut">
+              <span class="rv-kbd">G</span> засчитать
+              <span style="color:var(--subtle);">&nbsp;·&nbsp;</span>
+              <span class="rv-kbd">B</span> не засчитать
+              <span style="color:var(--subtle);">&nbsp;·&nbsp;</span>
+              <span class="rv-kbd" style="font-size:10px;">Esc</span> отмена
+            </div>
           </div>
-          {% endif %}
-          {% if answer.ai_feedback %}
-          <div class="rv-ai-feedback">{{ answer.ai_feedback }}</div>
-          {% endif %}
-          {% if answer.ai_suggestion %}
-          <div class="rv-ai-suggestion">
-            <i class="fas fa-lightbulb" style="color:#a78bfa;margin-right:6px;"></i>
-            {{ answer.ai_suggestion }}
+        </div>
+
+        <!-- Attempt meta -->
+        <div class="rv-meta-card">
+          <div class="rv-meta-hdr">
+            <i class="bi bi-person-badge"></i> Студент и попытка
           </div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-    {% endif %}
-
-  </div>
-
-  <!-- RIGHT: Grade + Meta + Siblings -->
-  <div>
-
-    <!-- Grade action -->
-    <div class="rv-grade-card">
-      <div class="rv-grade-card-hdr">
-        <i class="fas fa-gavel"></i>
-        Вынести вердикт
-      </div>
-      <div class="rv-grade-card-body">
-
-        <!-- Current status -->
-        {% if answer.grading_status == 'pending' or answer.grading_status == 'failed' %}
-          <div class="rv-current-status rv-status-pending">⏳ Ожидает проверки</div>
-        {% elif answer.is_correct and answer.grading_status == 'manual' %}
-          <div class="rv-current-status rv-status-correct">✅ Засчитан (вручную)</div>
-        {% elif not answer.is_correct and answer.grading_status == 'manual' %}
-          <div class="rv-current-status rv-status-wrong">❌ Не засчитан (вручную)</div>
-        {% elif answer.grading_status == 'done' %}
-          <div class="rv-current-status rv-status-ai">
-            🤖 AI: {% if answer.is_correct %}Засчитан{% else %}Не засчитан{% endif %}
-          </div>
-        {% endif %}
-
-        <div class="rv-grade-btns">
-          <button class="rv-btn rv-btn-correct"
-                  onclick="openConfirm('correct')">
-            ✅ Засчитать ответ
-          </button>
-          <button class="rv-btn rv-btn-wrong"
-                  onclick="openConfirm('incorrect')">
-            ❌ Не засчитывать
-          </button>
-        </div>
-
-        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--rv-border);font-size:12px;color:var(--rv-muted);text-align:center;">
-          Вердикт пересчитает балл студента автоматически.
-        </div>
-      </div>
-    </div>
-
-    <!-- Attempt meta -->
-    <div class="rv-meta-card">
-      <div class="rv-meta-card-hdr">
-        <i class="fas fa-user"></i> Студент и попытка
-      </div>
-      <div class="rv-meta-card-body">
-        <div class="rv-meta-row2">
-          <span class="rv-meta-label">Студент</span>
-          <span class="rv-meta-value">
-            <a href="{% url 'admin:testing_studentattempt_change' attempt.pk %}" style="color:var(--rv-blue);">
-              {{ attempt.student_name }}
-            </a>
-          </span>
-        </div>
-        <div class="rv-meta-row2">
-          <span class="rv-meta-label">Текущий балл</span>
-          <span class="rv-meta-value">
-            <strong style="color:{% if attempt.score >= 75 %}var(--rv-green){% elif attempt.score >= 50 %}var(--rv-amber){% else %}var(--rv-red){% endif %};">
-              {{ attempt.score }}%
-            </strong>
-          </span>
-        </div>
-        <div class="rv-meta-row2">
-          <span class="rv-meta-label">Статус попытки</span>
-          <span class="rv-meta-value">{{ attempt.get_status_display }}</span>
-        </div>
-        <div class="rv-meta-row2">
-          <span class="rv-meta-label">Начата</span>
-          <span class="rv-meta-value">{{ attempt.started_at|date:"d.m.Y H:i" }}</span>
-        </div>
-        {% if attempt.finished_at %}
-        <div class="rv-meta-row2">
-          <span class="rv-meta-label">Завершена</span>
-          <span class="rv-meta-value">{{ attempt.finished_at|date:"d.m.Y H:i" }}</span>
-        </div>
-        {% endif %}
-        <div class="rv-meta-row2">
-          <span class="rv-meta-label">Сессия</span>
-          <span class="rv-meta-value">
-            <a href="{% url 'admin:testing_testsession_change' session.pk %}" style="color:var(--rv-blue);font-size:11px;">
-              {{ session.title|default:session.key|truncatechars:20 }}
-            </a>
-          </span>
-        </div>
-        <div class="rv-meta-row2">
-          <span class="rv-meta-label">Тест</span>
-          <span class="rv-meta-value" style="font-size:11px;">{{ test.title|truncatechars:24 }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Sibling answers context -->
-    {% if sibling_answers %}
-    <div class="rv-meta-card">
-      <div class="rv-meta-card-hdr">
-        <i class="fas fa-list-ul"></i> Все ответы этой попытки
-      </div>
-      <div class="rv-meta-card-body">
-        <div class="rv-sibling-list">
-          {% for sa in sibling_answers %}
-          <div class="rv-sibling-item {% if sa.pk == answer.pk %}current{% endif %}">
-            {% if sa.pk == answer.pk %}
-              <div class="rv-sibling-dot rv-dot-current"></div>
-              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                <i class="fas fa-arrow-right" style="color:var(--rv-blue);margin-right:4px;"></i>
-                {{ sa.question.text|truncatechars:40 }}
+          <div class="rv-meta-body">
+            <div class="rv-meta-row">
+              <span class="rv-meta-label">Студент</span>
+              <span class="rv-meta-value">
+                <a href="{% url 'admin:testing_studentattempt_change' attempt.pk %}" class="rv-meta-link">
+                  {{ attempt.student_name }}
+                </a>
               </span>
-            {% elif sa.is_correct is True %}
-              <div class="rv-sibling-dot rv-dot-correct"></div>
-              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#374151;">{{ sa.question.text|truncatechars:40 }}</span>
-              <span style="color:var(--rv-green);font-size:11px;font-weight:700;">✓</span>
-            {% elif sa.is_correct is False %}
-              <div class="rv-sibling-dot rv-dot-wrong"></div>
-              <a href="{% url 'admin:testing_manual_review_detail' sa.pk %}" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#374151;text-decoration:none;">{{ sa.question.text|truncatechars:40 }}</a>
-              <span style="color:var(--rv-red);font-size:11px;font-weight:700;">✗</span>
-            {% else %}
-              <div class="rv-sibling-dot rv-dot-pending"></div>
-              <a href="{% url 'admin:testing_manual_review_detail' sa.pk %}" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#374151;text-decoration:none;">{{ sa.question.text|truncatechars:40 }}</a>
-              <span style="color:var(--rv-muted);font-size:11px;">⏳</span>
+            </div>
+            <div class="rv-meta-row">
+              <span class="rv-meta-label">Текущий балл</span>
+              <span class="rv-meta-value">
+                <span class="rv-score-display {% if attempt.score >= 75 %}rv-score-high{% elif attempt.score >= 50 %}rv-score-mid{% else %}rv-score-low{% endif %}">
+                  {{ attempt.score }}%
+                </span>
+              </span>
+            </div>
+            <div class="rv-meta-row">
+              <span class="rv-meta-label">Статус попытки</span>
+              <span class="rv-meta-value">{{ attempt.get_status_display }}</span>
+            </div>
+            <div class="rv-meta-row">
+              <span class="rv-meta-label">Начата</span>
+              <span class="rv-meta-value">{{ attempt.started_at|date:"d.m.Y H:i" }}</span>
+            </div>
+            {% if attempt.finished_at %}
+            <div class="rv-meta-row">
+              <span class="rv-meta-label">Завершена</span>
+              <span class="rv-meta-value">{{ attempt.finished_at|date:"d.m.Y H:i" }}</span>
+            </div>
             {% endif %}
+            <div class="rv-meta-row">
+              <span class="rv-meta-label">Сессия</span>
+              <span class="rv-meta-value">
+                <a href="{% url 'admin:testing_testsession_change' session.pk %}" class="rv-meta-link" style="font-size:11px;">
+                  {{ session.title|default:session.key|truncatechars:20 }}
+                </a>
+              </span>
+            </div>
+            <div class="rv-meta-row">
+              <span class="rv-meta-label">Тест</span>
+              <span class="rv-meta-value" style="font-size:11px;">{{ test.title|truncatechars:24 }}</span>
+            </div>
           </div>
-          {% endfor %}
         </div>
+
+        <!-- Sibling answers -->
+        {% if sibling_answers %}
+        <div class="rv-meta-card">
+          <div class="rv-meta-hdr">
+            <i class="bi bi-list-ul"></i> Ответы этой попытки
+          </div>
+          <div class="rv-meta-body" style="padding:10px 12px;">
+            <div class="rv-siblings">
+              {% for sa in sibling_answers %}
+              {% if sa.pk == answer.pk %}
+              <div class="rv-sibling current">
+                <div class="rv-sibling-dot rv-dot-current"></div>
+                <span class="rv-sibling-text">{{ sa.question.text|truncatechars:42 }}</span>
+                <span class="rv-sibling-indicator" style="color:var(--blue);">← текущий</span>
+              </div>
+              {% elif sa.is_correct is True %}
+              <a href="{% url 'admin:testing_manual_review_detail' sa.pk %}" class="rv-sibling">
+                <div class="rv-sibling-dot rv-dot-ok"></div>
+                <span class="rv-sibling-text">{{ sa.question.text|truncatechars:42 }}</span>
+                <span class="rv-sibling-indicator" style="color:var(--green);">✓</span>
+              </a>
+              {% elif sa.is_correct is False %}
+              <a href="{% url 'admin:testing_manual_review_detail' sa.pk %}" class="rv-sibling">
+                <div class="rv-sibling-dot rv-dot-no"></div>
+                <span class="rv-sibling-text">{{ sa.question.text|truncatechars:42 }}</span>
+                <span class="rv-sibling-indicator" style="color:var(--red);">✗</span>
+              </a>
+              {% else %}
+              <a href="{% url 'admin:testing_manual_review_detail' sa.pk %}" class="rv-sibling">
+                <div class="rv-sibling-dot rv-dot-pending"></div>
+                <span class="rv-sibling-text">{{ sa.question.text|truncatechars:42 }}</span>
+                <span class="rv-sibling-indicator">⏳</span>
+              </a>
+              {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Next pending card -->
+        {% if next_pending %}
+        <div class="rv-next-card">
+          <div class="rv-next-label">
+            <i class="bi bi-arrow-right-circle-fill"></i>
+            Следующий ожидает
+          </div>
+          <div class="rv-next-preview">
+            <strong>{{ next_pending.attempt.student_name }}</strong> —
+            {{ next_pending.question.text|truncatechars:55 }}
+          </div>
+          <a href="{% url 'admin:testing_manual_review_detail' next_pending.pk %}"
+             class="rv-btn rv-btn-blue" style="width:100%;justify-content:center;">
+            <i class="bi bi-arrow-right"></i> Перейти к проверке
+          </a>
+        </div>
+        {% endif %}
+
       </div>
     </div>
-    {% endif %}
-
-    <!-- Next pending hint -->
-    {% if next_pending %}
-    <div class="rv-card" style="border-color:#bfdbfe;">
-      <div class="rv-card-body" style="padding:14px 16px;">
-        <div style="font-size:12px;color:var(--rv-blue);font-weight:700;margin-bottom:6px;">
-          <i class="fas fa-forward"></i> Следующий ожидает проверки
-        </div>
-        <div style="font-size:12px;color:#374151;margin-bottom:10px;">
-          {{ next_pending.attempt.student_name }} — {{ next_pending.question.text|truncatechars:50 }}
-        </div>
-        <a href="{% url 'admin:testing_manual_review_detail' next_pending.pk %}" class="rv-btn rv-btn-next" style="width:100%;justify-content:center;">
-          <i class="fas fa-arrow-right"></i> Перейти
-        </a>
-      </div>
-    </div>
-    {% endif %}
-
   </div>
 </div>
 
 <script>
-const GRADE_URL = "{% url 'admin:testing_manual_review_grade' answer.pk %}";
+(function() {
+  'use strict';
 
-function openConfirm(verdict) {
-  const overlay = document.getElementById('rv-confirm-overlay');
-  const icon    = document.getElementById('confirm-icon');
-  const title   = document.getElementById('confirm-title');
-  const desc    = document.getElementById('confirm-desc');
-  const formEl  = document.getElementById('confirm-form');
-  const verdictEl = document.getElementById('confirm-verdict');
-  const submitBtn = document.getElementById('confirm-submit-btn');
+  const GRADE_URL = "{% url 'admin:testing_manual_review_grade' answer.pk %}";
+  const STUDENT   = "{{ attempt.student_name|escapejs }}";
 
-  formEl.action = GRADE_URL;
-  verdictEl.value = verdict;
+  window.openConfirm = function(verdict) {
+    const overlay  = document.getElementById('rv-overlay');
+    const emoji    = document.getElementById('rv-modal-emoji');
+    const title    = document.getElementById('rv-modal-title');
+    const desc     = document.getElementById('rv-modal-desc');
+    const form     = document.getElementById('rv-confirm-form');
+    const vInput   = document.getElementById('rv-confirm-verdict');
+    const submitBtn = document.getElementById('rv-confirm-btn');
 
-  if (verdict === 'correct') {
-    icon.textContent   = '✅';
-    title.textContent  = 'Засчитать ответ?';
-    desc.textContent   = 'Студент {{ attempt.student_name|escapejs }} получит балл за этот вопрос.';
-    submitBtn.className = 'rv-btn';
-    submitBtn.style.background = 'linear-gradient(135deg,#10b981,#059669)';
-    submitBtn.textContent = 'Засчитать';
-  } else {
-    icon.textContent   = '❌';
-    title.textContent  = 'Не засчитывать?';
-    desc.textContent   = 'Ответ студента {{ attempt.student_name|escapejs }} будет помечен как неверный.';
-    submitBtn.className = 'rv-btn';
-    submitBtn.style.background = 'linear-gradient(135deg,#f87171,#dc2626)';
-    submitBtn.textContent = 'Не засчитывать';
-  }
+    form.action    = GRADE_URL;
+    vInput.value   = verdict;
 
-  overlay.classList.add('show');
-}
+    if (verdict === 'correct') {
+      emoji.textContent = '✅';
+      title.textContent = 'Засчитать ответ?';
+      desc.textContent  = 'Студент ' + STUDENT + ' получит балл за этот вопрос.';
+      submitBtn.className = 'rv-modal-btn rv-modal-confirm rv-modal-confirm-ok';
+      submitBtn.textContent = 'Засчитать';
+    } else {
+      emoji.textContent = '❌';
+      title.textContent = 'Не засчитывать?';
+      desc.textContent  = 'Ответ студента ' + STUDENT + ' будет помечен как неверный.';
+      submitBtn.className = 'rv-modal-btn rv-modal-confirm rv-modal-confirm-no';
+      submitBtn.textContent = 'Не засчитывать';
+    }
 
-function closeConfirm() {
-  document.getElementById('rv-confirm-overlay').classList.remove('show');
-}
+    overlay.classList.add('show');
+    overlay.focus && overlay.focus();
+  };
 
-// Close on overlay click
-document.getElementById('rv-confirm-overlay').addEventListener('click', function(e) {
-  if (e.target === this) closeConfirm();
-});
+  window.closeConfirm = function() {
+    document.getElementById('rv-overlay').classList.remove('show');
+  };
 
-// Keyboard shortcut: G = correct, B = wrong, Esc = cancel
-document.addEventListener('keydown', function(e) {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  if (e.key === 'g' || e.key === 'G') openConfirm('correct');
-  if (e.key === 'b' || e.key === 'B') openConfirm('incorrect');
-  if (e.key === 'Escape') closeConfirm();
-});
+  // Close on backdrop click
+  document.getElementById('rv-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeConfirm();
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'g' || e.key === 'G') openConfirm('correct');
+    if (e.key === 'b' || e.key === 'B') openConfirm('incorrect');
+    if (e.key === 'Escape') closeConfirm();
+  });
+})();
 </script>
 {% endblock %}
