@@ -420,7 +420,7 @@
 
   {# Export — forwards all active filters #}
   <a href="{% url 'admin:testing_kpi_export' %}?period={{ period }}{% if test_id %}&test_id={{ test_id }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}"
-     class="kpi-export-btn">
+     class="kpi-export-btn" style="color:white">
     <i class="fas fa-file-excel"></i> Экспорт Excel
   </a>
 
