@@ -167,6 +167,16 @@ class TestSession(models.Model):
     test         = models.ForeignKey(
         Test, on_delete=models.CASCADE, related_name='sessions', verbose_name='Тест',
     )
+    teacher = models.ForeignKey(
+        'Teacher',
+        on_delete=models.PROTECT,
+        related_name='sessions',
+        null=True,
+        blank=True,
+        verbose_name='Тренер',
+        help_text='Тренер, создавший сессию тестирования',
+    )
+
     session_type = models.CharField(
         max_length=10,
         choices=SessionType.choices,
@@ -438,3 +448,105 @@ class Answer(models.Model):  # noqa: F821
         self.is_correct     = is_correct
         self.grading_status = GradingStatus.MANUAL
         self.save(update_fields=['is_correct', 'grading_status'])
+
+import uuid
+import secrets
+
+from django.db import models
+from django.contrib.auth.hashers import make_password, check_password
+
+
+def generate_access_key():
+    return secrets.token_urlsafe(16)
+
+
+class Teacher(models.Model):
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+
+    name = models.CharField(
+        max_length=255,
+        verbose_name='Имя тренера',
+        help_text='ФИО или отображаемое имя тренера',
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Активен',
+        help_text='Может ли тренер создавать тестовые сессии',
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Создан',
+    )
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Тренер'
+        verbose_name_plural = 'Тренеры'
+
+    def __str__(self):
+        return self.name
+
+
+class TeacherAccess(models.Model):
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+
+
+
+    username = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name='Логин',
+        help_text='Используется для входа в систему',
+    )
+
+    password = models.CharField(
+        max_length=255,
+        verbose_name='Пароль',
+        help_text='Хранится в зашифрованном виде',
+    )
+
+    access_key = models.CharField(
+        max_length=64,
+        unique=True,
+        default=generate_access_key,
+        verbose_name='Ключ доступа',
+        help_text='Уникальный ключ для авторизации тренера',
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Активен',
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Создан',
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Обновлён',
+    )
+
+    class Meta:
+        ordering = ['username']
+        verbose_name = 'Доступ тренера'
+        verbose_name_plural = 'Доступы тренеров'
+
+
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password)
+
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.password)
+
