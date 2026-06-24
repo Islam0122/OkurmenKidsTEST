@@ -500,53 +500,45 @@ class TeacherAccess(models.Model):
         editable=False,
     )
 
-
-
     username = models.CharField(
         max_length=50,
         unique=True,
         verbose_name='Логин',
-        help_text='Используется для входа в систему',
+        help_text='Общий логин для доступа тренеров к системе',
     )
 
     password = models.CharField(
         max_length=255,
         verbose_name='Пароль',
-        help_text='Хранится в зашифрованном виде',
-    )
-
-    access_key = models.CharField(
-        max_length=64,
-        unique=True,
-        default=generate_access_key,
-        verbose_name='Ключ доступа',
-        help_text='Уникальный ключ для авторизации тренера',
+        help_text='Пароль хранится в зашифрованном виде',
     )
 
     is_active = models.BooleanField(
         default=True,
         verbose_name='Активен',
+        help_text='Разрешить или запретить доступ к системе',
     )
 
     created_at = models.DateTimeField(
         auto_now_add=True,
-        verbose_name='Создан',
+        verbose_name='Дата создания',
     )
 
     updated_at = models.DateTimeField(
         auto_now=True,
-        verbose_name='Обновлён',
+        verbose_name='Дата обновления',
     )
 
     class Meta:
         ordering = ['username']
-        verbose_name = 'Доступ тренера'
-        verbose_name_plural = 'Доступы тренеров'
+        verbose_name = 'Доступ к панели тренеров'
+        verbose_name_plural = 'Доступ к панели тренеров'
 
+    def __str__(self):
+        return self.username
 
     def set_password(self, raw_password):
         self.password = make_password(raw_password)
 
     def check_password(self, raw_password):
         return check_password(raw_password, self.password)
-
